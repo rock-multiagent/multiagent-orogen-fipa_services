@@ -1,3 +1,34 @@
-name 'root-module'
+name 'modules'
 version '0.1'
 # Find documentation at http://doudou.github.com/orogen/
+
+import_types_from "root_module_data.h"
+
+task_context "RootModule" do
+    needs_configuration
+
+    output_port('outputPortMTS', '/modules/Vector').
+        doc('Direct output port to the mts (message-transport-service).')
+    input_port('inputPortMTS', '/modules/Vector').
+        doc('Direct input port for the messages of the mts (message-transport-service).')
+
+    method(:createAndConnectPorts).
+	    argument('remote_name', 'std::string').
+        argument('remote_ior', 'std::string').
+        returns('bool').
+	    doc('Creates and connects additional ports.')
+        
+    method(:sendMessage).
+        argument('receiver', '/std/string').
+        argument('msg', '/std/string').
+        returns('bool').
+        doc('Passes a fipa message to the mts for delivery.')
+end
+
+deployment "root_module" do
+    #add_default_logger
+    mod = task("root_module", "modules::RootModule").
+        priority('10').
+        periodic('0.001').
+        start
+end
