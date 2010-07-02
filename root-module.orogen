@@ -2,7 +2,7 @@ name 'modules'
 version '0.1'
 # Find documentation at http://doudou.github.com/orogen/
 
-import_types_from "root_module_data.h"
+import_types_from "tasks/root_module_data.h"
 
 task_context "RootModule" do
     needs_configuration
