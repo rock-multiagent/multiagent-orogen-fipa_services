@@ -1,0 +1,14 @@
+<package>
+  <description brief="Rimres Root Module">
+  </description>
+  <author>Stefan Haase/stefan.haase@dfki.de</author>
+  <license></license>
+  <url>http://</url>
+  <logo>http://</logo>
+  <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
+  <depend package="framework/service-discovery" />
+  <versioncontrol type="git" url="" />
+  <export>
+    <cpp cflags="" lflags="" />
+  </export>
+</package>
