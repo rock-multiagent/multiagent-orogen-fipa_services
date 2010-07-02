@@ -28,5 +28,5 @@ INSTALL(FILES ${MODULES_TASKLIB_HEADERS}
     DESTINATION include/orocos/modules)
 
 INSTALL(FILES RemoteConnection.hpp
-    DESTINATION include/orocos/rimresmodule/tasks)
+    DESTINATION include/orocos/modules/tasks)
 
