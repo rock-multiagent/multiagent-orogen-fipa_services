@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties SYSTEM "cpf.dtd">
+<properties>
+	<simple name="name" type="string">
+		<description>Name of the module. Has to be unique.</description>
+		<value>rimres_module</value>
+	</simple>
+
+	<simple name="avahi_type" type="string">
+		<description>Avahi-Type of the module. The Service-Discovery 
+            will only find modules with the same avahi-type.</description>
+		<value>_rimres._tcp</value>
+	</simple>
+
+	<simple name="port" type="int">
+		<description>Port of the module. Default is 12000.</description>
+		<value>12000</value>
+	</simple>
+
+	<simple name="ttl" type="int">
+		<description>Time-To-Live. Default is 0.</description>
+		<value>0</value>
+	</simple>
+</properties>

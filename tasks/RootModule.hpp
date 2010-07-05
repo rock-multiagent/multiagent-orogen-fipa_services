@@ -193,12 +193,7 @@ friend class RootModuleBase;
      * and define callbacks (service removed and added).
      */
     dfki::communication::ServiceDiscovery* serviceDiscovery;
-   
-
- private: // COMMANDS
     sem_t connectSemaphore; // TODO: Add semaphores in 'createAndConnectPorts()'.
-
- private:
     DISALLOW_COPY_AND_ASSIGN(RootModule);
 };
 } // namespace modules
