@@ -172,7 +172,7 @@ RTT::NonPeriodicActivity* RootModule::getNonPeriodicActivity()
 
 bool RootModule::isMTS(dfki::communication::OrocosComponentRemoteService rms)
 {
-    return (rms.getName() == "rimres_module_transport");
+    return (rms.getName().find("transport") != std::string::npos);
 }
 
 bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
@@ -225,6 +225,20 @@ bool RootModule::sendMessage(std::string const& receiver, std::string const& msg
         return false;
     }
 }
+
+bool RootModule::sendMessageToMTA(Vector const& msg)
+{
+    if(mts)
+    {
+        RTT::OutputPort<Vector>* output_port = mts->getOutputPort();
+        if(output_port) 
+        {
+            output_port->write(msg);
+            return true;
+        }
+    }
+    return false;
+}  
 
 void RootModule::startServiceDiscovery()
 {
@@ -357,15 +371,15 @@ void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService 
 {
     // not looking particularly for a MTS (for testing purposes)
     // Connect to the first appropriate MTS.
-    // if(isMTS(rms) && mts == NULL)
-    // {
+    if(isMTS(rms) && mts == NULL)
+    {
         mts = connectToRemoteModule(rms);
         if(mts != NULL)
         {
             log(RTT::Info) << "Connected to a message transport service (MTS)" << RTT::endlog();
             sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
         }
-    // }
+    }
 }
 
 void RootModule::serviceRemoved(dfki::communication::OrocosComponentRemoteService rms)

@@ -66,13 +66,17 @@ friend class RootModuleBase;
      */
     bool sendMessage(std::string const& receiver, Vector const& msg);
 
-
     /**
      * Sends a string message to the connected MTS, which forwards it to the 
      * receiver. First, this service has to be connected to a MTS 
      * and the receiver must be known by the MTS.
      */
     bool sendMessage(std::string const& receiver, std::string const& msg);
+
+    /**
+     * Sends the passed fipa message if a MTA is available.
+     */
+    bool sendMessageToMTA(Vector const& msg);    
 
     /**
      * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
@@ -173,26 +177,27 @@ friend class RootModuleBase;
             std::string const & remote_ior);
 
     /** Contains the service(module) informations, used to configure 'ServiceDiscovery'. */
-    	dfki::communication::ServiceDiscovery::Configuration conf;
+    dfki::communication::ServiceDiscovery::Configuration conf;
 
     /**
      * Contains all the connections (IO-ports and Control TaskProxy) 
      * to the other modules.
      */
-        std::map<std::string, RemoteConnection*> remoteConnectionsMap;
+    std::map<std::string, RemoteConnection*> remoteConnectionsMap;
+
     /**
      * Direct pointer to the connected Message Transport Service.
      * Use 'mts != NULL' to check whether fipa messages could be sent.
      */
-       RemoteConnection* mts;
+    RemoteConnection* mts;
    
-
- private:
-     /**
+    /**
      * ServiceDiscovery is used to publish its service, collect all available services 
      * and define callbacks (service removed and added).
      */
     dfki::communication::ServiceDiscovery* serviceDiscovery;
+
+ private:
     sem_t connectSemaphore; // TODO: Add semaphores in 'createAndConnectPorts()'.
     DISALLOW_COPY_AND_ASSIGN(RootModule);
 };
