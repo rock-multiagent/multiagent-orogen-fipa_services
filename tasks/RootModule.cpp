@@ -366,6 +366,8 @@ void RootModule::fillModuleInfo(std::string const & configuration)
     this->setName(conf.name);
 }
 
+test()
+
 ////////////////////////////////CALLBACKS///////////////////////////
 void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService rms)
 {
