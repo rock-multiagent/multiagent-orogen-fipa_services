@@ -278,24 +278,16 @@ bool RootModule::startHook()
 void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
 {
     // Check input ports.
-    map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.begin();
-    for(; it != remoteConnectionsMap.end(); it++)
+    std::vector<RTT::PortInterface*>::const_iterator it;
+    for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
     { 
-        Vector vec;
-        std::string msg;
-        RTT::InputPort<Vector>* input = it->second->getInputPort();
-        if(!input)
-        {
-            continue;
-        }
-        if(isPortUpdated(*input)) 
-	{ 
-            input->read(vec);
-            msg = vec.toString();
-            log(RTT::Info) << it->first << ": " << msg << RTT::endlog();
-            input->clear();
-        }
+	modules::Vector message;
+	RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
+	((RTT::InputPort<modules::Vector>*)read_port)->read(message);
+	log(RTT::Info) << "Received new message on port " << (*it)->getName() << " of size " << message.size() << RTT::endlog();
+	delete read_port;
     }
+	
 /*    if(mts != NULL)
     {
         std::string test_str("Dies ist ein Test, es ist ein längerer String, damit ich auch sehe, ob ein Speicherverlust auftritt\
@@ -460,6 +452,23 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
     log(RTT::Info) << "Connected to '" <<  remote_name << "'" << RTT::endlog();
     remoteConnectionsMap.insert(std::pair<std::string, RemoteConnection*>(remote_name, rm));
     return true;
+}
+
+
+std::string RootModule::getMTAinEnvID(std::string env) 
+{
+	std::string MTA = "";
+	std::vector<std::string> services = serviceDiscovery->getServiceNames();
+	for (std::vector<std::string>::iterator it = services.begin(); it != services.end(); ++it)
+	{
+		if ( ModuleID::getEnvID(*it) == env ) {
+			if ( ModuleID::getType(*it) == "MTA" ) {
+				MTA = (*it);
+				break; 		
+			}
+		}
+	}
+	return MTA;
 }
 
 ////////////////////////////////////////////////////////////////////

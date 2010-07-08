@@ -28,8 +28,8 @@
 namespace modules
 {
 /**
- * The ID (name of the module) of each module is build up like ENVID_TYPE_NAME.
- * The name of the message transport agents is ENVID_TYPE.
+ * The ID (name of the module) of each module is build up like ENVID-TYPE-NAME.
+ * The name of the message transport agents is ENVID-TYPE.
  * Each ID has to be unique within the framework.
  * - ENVID: Environment ID. Every module on one pc should have the same ENVID.
  * - TYPE: Type of the module.  At the moment: ROOT, LOG, MTA, CHAT.

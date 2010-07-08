@@ -11,7 +11,9 @@ bool ModuleID::splitID(std::string module_id,
     char* pch = NULL;
     const char* tok = tokens.c_str();
     // Splits up the ID. If the ID has a wrong format, empty strings will be created.
-    *envID = std::string((pch=strtok((char*)module_id.c_str(), tok)) ? pch : "");
+    char mod_id[128];
+    strcpy(mod_id, module_id.c_str());
+    *envID = std::string((pch=strtok(mod_id, tok)) ? pch : "");
     *type = std::string((pch=strtok(NULL, tok)) ? pch : "");
     *module_name = std::string((pch=strtok(NULL, tok)) ? pch : "");
     return (!envID->empty() && !type->empty() && !module_name->empty()); 

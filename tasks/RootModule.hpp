@@ -191,6 +191,9 @@ friend class RootModuleBase;
      */
     dfki::communication::ServiceDiscovery* serviceDiscovery;
 
+    std::string getMTAinEnvID(std::string);
+
+
  private: // CALLBACKS (private because they can not be overwritten, use protected ones)
     /**
      * Callback function adds the newly discovered service if its unknown.
