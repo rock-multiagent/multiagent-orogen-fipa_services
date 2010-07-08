@@ -279,12 +279,12 @@ bool RootModule::startHook()
     return true;
 }
 
-void RootModule::updateHook()
+void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
 {
     // Check input ports.
     map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.begin();
     for(; it != remoteConnectionsMap.end(); it++)
-    {
+    { 
         Vector vec;
         std::string msg;
         RTT::InputPort<Vector>* input = it->second->getInputPort();
@@ -292,14 +292,15 @@ void RootModule::updateHook()
         {
             continue;
         }
-        if(input->read(vec))
-        {
+        if(isPortUpdated(*input)) 
+	{ 
+            input->read(vec);
             msg = vec.toString();
             log(RTT::Info) << it->first << ": " << msg << RTT::endlog();
             input->clear();
         }
     }
-    if(mts != NULL)
+/*    if(mts != NULL)
     {
         std::string test_str("Dies ist ein Test, es ist ein längerer String, damit ich auch sehe, ob ein Speicherverlust auftritt\
             oder ob alles funktioniert. Wenn alles geht, dann könnte es daran gelegen haben, dass das struct Vector keinen Destructor hatte\
@@ -311,6 +312,7 @@ void RootModule::updateHook()
         if(test_counter < 100000)
             sendMessage(mts->getRemoteModuleName(), test_nr + test_str);
     }
+*/
 }
 
 void RootModule::stopHook()
@@ -366,22 +368,20 @@ void RootModule::fillModuleInfo(std::string const & configuration)
     this->setName(conf.name);
 }
 
-test()
-
 ////////////////////////////////CALLBACKS///////////////////////////
 void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService rms)
 {
     // not looking particularly for a MTS (for testing purposes)
     // Connect to the first appropriate MTS.
-    if(isMTS(rms) && mts == NULL)
-    {
+  //  if(isMTS(rms) && mts == NULL)
+  // {
         mts = connectToRemoteModule(rms);
         if(mts != NULL)
         {
             log(RTT::Info) << "Connected to a message transport service (MTS)" << RTT::endlog();
             sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
         }
-    }
+  //  }
 }
 
 void RootModule::serviceRemoved(dfki::communication::OrocosComponentRemoteService rms)
