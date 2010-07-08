@@ -2,8 +2,8 @@
 <!DOCTYPE properties SYSTEM "cpf.dtd">
 <properties>
 	<simple name="name" type="string">
-		<description>Name of the module. Has to be unique.</description>
-		<value>rimres_module</value>
+		<description>ID of the module. Consists of ENVID_TYPE_NAME. Has to be unique.</description>
+		<value>1_ROOT_rimresmodule</value>
 	</simple>
 
 	<simple name="avahi_type" type="string">

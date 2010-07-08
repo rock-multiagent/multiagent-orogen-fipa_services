@@ -10,6 +10,7 @@
 #include <rtt/corba/ControlTaskServer.hpp>
 #include <rtt/NonPeriodicActivity.hpp>
 
+#include "ModuleID.hpp"
 #include "RemoteConnection.hpp"
 
 namespace dc = dfki::communication;
@@ -170,11 +171,6 @@ RTT::NonPeriodicActivity* RootModule::getNonPeriodicActivity()
     return dynamic_cast< RTT::NonPeriodicActivity* >(getActivity().get());
 }
 
-bool RootModule::isMTS(dfki::communication::OrocosComponentRemoteService rms)
-{
-    return (rms.getName().find("transport") != std::string::npos);
-}
-
 bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
 {
     map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.find(receiver);
@@ -332,7 +328,7 @@ void RootModule::fillModuleInfo(std::string const & configuration)
     srand(time(NULL));
     sprintf(buffer, "%d", rand() % 100000);
     
-    conf.name = "rimres_module_" + std::string(buffer);
+    conf.name = "1_ROOT_rimresmodule" + std::string(buffer);
     conf.avahi_type = "_rimres._tcp";
     conf.avahi_port = 12000;
     conf.ttl = 0;
@@ -366,14 +362,21 @@ void RootModule::fillModuleInfo(std::string const & configuration)
     this->setName(conf.name);
 }
 
-test()
-
 ////////////////////////////////CALLBACKS///////////////////////////
-void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService rms)
+void RootModule::serviceAdded_(dfki::communication::OrocosComponentRemoteService rms)
 {
-    // not looking particularly for a MTS (for testing purposes)
-    // Connect to the first appropriate MTS.
-    if(isMTS(rms) && mts == NULL)
+    if(mts != NULL)
+    {
+        return;
+    }
+
+    std::string envID;
+    std::string type;
+    std::string name;
+    ModuleID::splitID(rms.getName(), &envID, &type, &name);
+
+    // Connect to the first appropriate MTS (same environment id).    
+    if(ModuleID::getEnvID(this->getName()) == envID && type == "MTA")
     {
         mts = connectToRemoteModule(rms);
         if(mts != NULL)
@@ -384,7 +387,7 @@ void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService 
     }
 }
 
-void RootModule::serviceRemoved(dfki::communication::OrocosComponentRemoteService rms)
+void RootModule::serviceRemoved_(dfki::communication::OrocosComponentRemoteService rms)
 {
     
     if(remoteConnectionsMap.find(rms.getName()) != remoteConnectionsMap.end())
@@ -457,5 +460,17 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
     return true;
 }
 
+////////////////////////////////////////////////////////////////////
+//                           PRIVATE                              //
+////////////////////////////////////////////////////////////////////
+void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService rms)
+{
+    serviceAdded_(rms);
+}
+
+void RootModule::serviceRemoved(dfki::communication::OrocosComponentRemoteService rms)
+{
+    serviceRemoved_(rms);
+}
 } // namespace modules
 

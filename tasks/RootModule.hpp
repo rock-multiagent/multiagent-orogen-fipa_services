@@ -54,12 +54,6 @@ friend class RootModuleBase;
     RTT::NonPeriodicActivity* getNonPeriodicActivity();
 
     /**
-     * Checks whether a service is a MTS. 
-     * TODO: Extend to requestType (MTS, Camera...).
-     */
-    bool isMTS(dfki::communication::OrocosComponentRemoteService rms);
-
-    /**
      * Sends a Vector message to the connected MTS, which forwards it to the 
      * receiver. First, this service has to be connected to a MTS 
      * and the receiver must be known by the MTS.
@@ -161,12 +155,12 @@ friend class RootModuleBase;
     /**
      * Callback function adds the newly discovered service if its unknown.
      */
-	void serviceAdded(dfki::communication::OrocosComponentRemoteService rms);
+	void serviceAdded_(dfki::communication::OrocosComponentRemoteService rms);
 
     /**
      * Removes the service from the list if it disappears.
      */
-	void serviceRemoved(dfki::communication::OrocosComponentRemoteService rms);
+	void serviceRemoved_(dfki::communication::OrocosComponentRemoteService rms);
 
  protected: // METHODS
     /**
@@ -196,6 +190,17 @@ friend class RootModuleBase;
      * and define callbacks (service removed and added).
      */
     dfki::communication::ServiceDiscovery* serviceDiscovery;
+
+ private: // CALLBACKS (private because they can not be overwritten, use protected ones)
+    /**
+     * Callback function adds the newly discovered service if its unknown.
+     */
+	void serviceAdded(dfki::communication::OrocosComponentRemoteService rms);
+
+    /**
+     * Removes the service from the list if it disappears.
+     */
+	void serviceRemoved(dfki::communication::OrocosComponentRemoteService rms);
 
  private:
     sem_t connectSemaphore; // TODO: Add semaphores in 'createAndConnectPorts()'.

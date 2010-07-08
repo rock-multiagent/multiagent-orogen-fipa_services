@@ -1,6 +1,6 @@
 include(modulesTaskLib)
 
-set(SOURCES RemoteConnection.cpp) 
+set(SOURCES RemoteConnection.cpp ModuleID.cpp) 
 set(MODULES_TASKLIB_SOURCES ${MODULES_TASKLIB_SOURCES} ${SOURCES})
 
 ADD_LIBRARY(${MODULES_TASKLIB_NAME} SHARED 
@@ -27,6 +27,7 @@ INSTALL(TARGETS ${MODULES_TASKLIB_NAME}
 INSTALL(FILES ${MODULES_TASKLIB_HEADERS}
     DESTINATION include/orocos/modules)
 
-INSTALL(FILES RemoteConnection.hpp
+set(HEADERS RemoteConnection.hpp ModuleID.hpp)
+INSTALL(FILES ${HEADERS}
     DESTINATION include/orocos/modules/tasks)
 
