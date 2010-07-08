@@ -82,8 +82,13 @@ bool RemoteConnection::initialize()
     outputPort = new RTT::OutputPort<Vector>(outputPortName);
 
     std::string info = "Input port from '" + remoteModuleName + "' to '" + localModuleName + "'";
-    if(taskContext->ports()->addPort(inputPort, info)){
-        log(RTT::Info) << "Create InputPort '" <<  inputPortName << "'" << RTT::endlog();
+    if(taskContext->ports()->addEventPort(inputPort, info)){
+	log(RTT::Info) << "Create InputPort '" <<  inputPortName << "'" << RTT::endlog();
+	if (taskContext->connectPortToEvent(inputPort)) {
+	        log(RTT::Info) << "Port '" <<  inputPortName << "' connected to an event handler" << RTT::endlog();
+	} else {
+	        log(RTT::Error) << "Could not connect port '" <<  inputPortName << "' to an event handler." << RTT::endlog();
+	}
     } else {
         log(RTT::Error) << "Create InputPort '" <<  inputPortName << "'" << RTT::endlog();
         return false;

@@ -275,12 +275,12 @@ bool RootModule::startHook()
     return true;
 }
 
-void RootModule::updateHook()
+void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
 {
     // Check input ports.
     map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.begin();
     for(; it != remoteConnectionsMap.end(); it++)
-    {
+    { 
         Vector vec;
         std::string msg;
         RTT::InputPort<Vector>* input = it->second->getInputPort();
@@ -288,14 +288,15 @@ void RootModule::updateHook()
         {
             continue;
         }
-        if(input->read(vec))
-        {
+        if(isPortUpdated(*input)) 
+	{ 
+            input->read(vec);
             msg = vec.toString();
             log(RTT::Info) << it->first << ": " << msg << RTT::endlog();
             input->clear();
         }
     }
-    if(mts != NULL)
+/*    if(mts != NULL)
     {
         std::string test_str("Dies ist ein Test, es ist ein längerer String, damit ich auch sehe, ob ein Speicherverlust auftritt\
             oder ob alles funktioniert. Wenn alles geht, dann könnte es daran gelegen haben, dass das struct Vector keinen Destructor hatte\
@@ -307,6 +308,7 @@ void RootModule::updateHook()
         if(test_counter < 100000)
             sendMessage(mts->getRemoteModuleName(), test_nr + test_str);
     }
+*/
 }
 
 void RootModule::stopHook()

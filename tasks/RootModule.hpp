@@ -118,7 +118,7 @@ friend class RootModuleBase;
      * called before starting it again.
      *
      */
-    void updateHook();
+    void updateHook(std::vector<RTT::PortInterface*> const& updated_ports);
     
 
     /** This hook is called by Orocos when the component is in the

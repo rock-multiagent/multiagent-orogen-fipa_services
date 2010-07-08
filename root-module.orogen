@@ -12,6 +12,9 @@ task_context "RootModule" do
     input_port('inputPortMTS', '/modules/Vector').
         doc('Direct input port for the messages of the mts (message-transport-service).')
 
+    output_port('logger', 'std::string').
+	doc('A port to handle all log messages by sending them to a centralized logger')
+
     method(:createAndConnectPorts).
 	    argument('remote_name', 'std::string').
         argument('remote_ior', 'std::string').
@@ -26,7 +29,7 @@ task_context "RootModule" do
 end
 
 deployment "root_module" do
-    #add_default_logger
+    add_default_logger
     mod = task("root_module", "modules::RootModule").
         priority('10').
         periodic('0.001').
