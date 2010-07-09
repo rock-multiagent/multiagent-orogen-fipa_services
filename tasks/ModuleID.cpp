@@ -2,6 +2,9 @@
 
 namespace modules
 {
+
+int max_length = 128;
+
 bool ModuleID::splitID(std::string module_id,
         std::string* envID,
         std::string* type,
@@ -11,7 +14,7 @@ bool ModuleID::splitID(std::string module_id,
     char* pch = NULL;
     const char* tok = tokens.c_str();
     // Splits up the ID. If the ID has a wrong format, empty strings will be created.
-    char mod_id[128];
+    char mod_id[max_length];
     strcpy(mod_id, module_id.c_str());
     *envID = std::string((pch=strtok(mod_id, tok)) ? pch : "");
     *type = std::string((pch=strtok(NULL, tok)) ? pch : "");
