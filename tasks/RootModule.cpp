@@ -27,7 +27,7 @@ RootModule::RootModule(std::string const& name) : RootModuleBase(name),
         serviceDiscovery(NULL),
         mts(NULL)
 {
-    conf = dc::ServiceDiscovery::Configuration("", name, "_rimres._tcp");
+    conf = dc::ServiceConfiguration(name, "_rimres._tcp");
     sem_init(&connectSemaphore, 1, 1); // Shared between processes and value one.
     // See 'configureHook()'.
 }
@@ -53,27 +53,27 @@ RootModule::~RootModule()
 }
 
 //todo: add the rm to the map at the end, delete rm if connection fails.
-RemoteConnection* RootModule::connectToRemoteModule(dc::OrocosComponentRemoteService rms)
+RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
 {
     // Do nothing if the connection have already be established.
-    if(remoteConnectionsMap.find(rms.getName()) != remoteConnectionsMap.end())
+    if(remoteConnectionsMap.find(se.getServiceDescription().getName()) != remoteConnectionsMap.end())
     {
-        log(RTT::Warning) << "Connection to '" << rms.getName() << 
+        log(RTT::Warning) << "Connection to '" << se.getServiceDescription().getName() << 
                 "' already established. " << RTT::endlog();
         return NULL;
     }
     // Do not connect to yourself
-    if(rms.getName() == conf.name)
+    if(se.getServiceDescription().getName() == conf.getName())
     {
         log(RTT::Warning) << "Modules are not allowed to connect to themselves." << 
             RTT::endlog();
         return NULL;
     }
     // Create and add new connection.
-    RemoteConnection* rm = new RemoteConnection(this, rms);
+    RemoteConnection* rm = new RemoteConnection(this, se);
     if(!rm->initialize())
     {
-        log(RTT::Error) << "Connection to '" << rms.getName() << 
+        log(RTT::Error) << "Connection to '" << se.getServiceDescription().getName() << 
             "' could not be initialized." << RTT::endlog(); 
         delete rm; rm = NULL;
         return NULL;
@@ -85,7 +85,7 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::OrocosComponentRemoteSer
     // Remote Methods are ready?
     if(!create_remote_ports.ready())
     {
-        log(RTT::Error) << "Connection on the remote module '" << rms.getName() << 
+        log(RTT::Error) << "Connection on the remote module '" << se.getServiceDescription().getName() << 
             "' could not be created." << RTT::endlog();
         delete rm; rm = NULL;
         return NULL;
@@ -93,7 +93,7 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::OrocosComponentRemoteSer
     // Create remote connection.
     if(!create_remote_ports(rm->getLocalModuleName(), rm->getLocalIOR()))
     {
-        log(RTT::Error) << "Connection on the remote module '" << rms.getName() << 
+        log(RTT::Error) << "Connection on the remote module '" << se.getServiceDescription().getName() << 
             "' could not be created." << RTT::endlog();
         delete rm; rm = NULL;
         return NULL;
@@ -102,7 +102,7 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::OrocosComponentRemoteSer
     // Refresh control task proxy.
     if(!rm->syncControlTaskProxy())
     {
-        log(RTT::Error) << "Connection to '" << rms.getName() <<
+        log(RTT::Error) << "Connection to '" << se.getServiceDescription().getName() <<
             "' could not be reestablished." << RTT::endlog();
         delete rm; rm = NULL;
         return NULL;
@@ -115,7 +115,7 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::OrocosComponentRemoteSer
     if(remoteinputport == NULL)
     {
         log(RTT::Error) << "Inputport '" << rm->getOutputPortName() <<
-            "' of the remote module '" << rms.getName() << 
+            "' of the remote module '" << se.getServiceDescription().getName() << 
             "' could not be received." << RTT::endlog();
         return NULL;
     }
@@ -133,21 +133,21 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::OrocosComponentRemoteSer
     {
         log(RTT::Error) << "Outputport '" << rm->getOutputPortName() <<
             "' cant be connected to the Inputport of " <<
-            rms.getName() << RTT::endlog();
+            se.getServiceDescription().getName() << RTT::endlog();
         delete rm; rm = NULL;
         return NULL;
     }
-    log(RTT::Info) << "Connected to '" <<  rms.getName() << "'" << RTT::endlog();
+    log(RTT::Info) << "Connected to '" <<  se.getServiceDescription().getName() << "'" << RTT::endlog();
     // Add to map of valid connections.
     remoteConnectionsMap.insert(std::pair<std::string, RemoteConnection*>
-            (rms.getName(), rm));
+            (se.getServiceDescription().getName(), rm));
     return rm;
 } 
 
-void RootModule::disconnectFromService(dc::OrocosComponentRemoteService rms)
+void RootModule::disconnectFromService(dc::ServiceEvent se)
 {    
     map<std::string, RemoteConnection*>::iterator it;
-    it=remoteConnectionsMap.find(rms.getName());
+    it=remoteConnectionsMap.find(se.getServiceDescription().getName());
     if(it != remoteConnectionsMap.end()) { // found
         // If its the MTS, remove shortcut to this service.
         std::string output_str = "Removed service '";
@@ -159,9 +159,9 @@ void RootModule::disconnectFromService(dc::OrocosComponentRemoteService rms)
         // Ports and control task proxy will be removed.
         delete(it->second); it->second = NULL;
         remoteConnectionsMap.erase(it);
-        log(RTT::Info) << output_str << rms.getName() << "'" << RTT::endlog();
+        log(RTT::Info) << output_str << se.getServiceDescription().getName() << "'" << RTT::endlog();
     } else {
-        log(RTT::Warning) << "Connection to '" << rms.getName() << 
+        log(RTT::Warning) << "Connection to '" << se.getServiceDescription().getName() << 
             "' unknown, can not disconnect." << RTT::endlog();
     }
 }
@@ -241,20 +241,20 @@ void RootModule::startServiceDiscovery()
     if(serviceDiscovery == NULL)
     {
         serviceDiscovery = new dc::ServiceDiscovery();
-        conf.stringlist.push_back("Type=Basis");
+//        conf.stringlist.push_back("Type=Basis");
         serviceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
             &RootModule::serviceAdded));
         serviceDiscovery->removedComponentConnect(sigc::mem_fun(*this, 
             &RootModule::serviceRemoved));
+
     }
-    serviceDiscovery->configure(conf);
     try{
-        serviceDiscovery->start();
+        serviceDiscovery->start(conf);
     } catch(exception& e) {
         log(RTT::Error) << e.what() << RTT::endlog();
     }
     log(RTT::Info) << "Started service '" << this->getName() << "' with avahi-type '" 
-        << conf.avahi_type << "'" << RTT::endlog();
+        << conf.getType() << "'" << RTT::endlog();
 }
 
 ////////////////////////////////HOOKS///////////////////////////////
@@ -321,13 +321,13 @@ void RootModule::fillModuleInfo(std::string const & configuration)
     char buffer[sizeof(int)*8+1];
     srand(time(NULL));
     sprintf(buffer, "%d", rand() % 100000);
-    
-    conf.name = "1_ROOT_rimresmodule" + std::string(buffer);
-    conf.avahi_type = "_rimres._tcp";
-    conf.avahi_port = 12000;
-    conf.ttl = 0;
-    conf.IOR = RTT::Corba::ControlTaskServer::getIOR(this);
 
+    conf.setName("A_ROOT_rimresmodule" + std::string(buffer));
+    conf.setType("_rimres._tcp");
+    conf.setPort(12000);
+    conf.setTTL(0);
+//    conf.setRawDescriptions(RTT::Corba::ControlTaskServer::getIOR(this));
+    conf.setDescription("IOR", RTT::Corba::ControlTaskServer::getIOR(this));
     // Try to load the config-file.
     std::string module_path = "";
     if (configuration != "")
@@ -346,18 +346,18 @@ void RootModule::fillModuleInfo(std::string const & configuration)
         RTT::Property<int>* p_port = pb->getProperty<int>("port");
         RTT::Property<int>* p_ttl = pb->getProperty<int>("ttl");
 
-        if(p_name) conf.name = p_name->get();
-        if(p_type) conf.avahi_type = p_type->get();
-        if(p_port) conf.avahi_port = p_port->get();
-        if(p_ttl)  conf.ttl = p_ttl->get();
+        if(p_name) conf.setName(p_name->get());
+        if(p_type) conf.setType(p_type->get());
+        if(p_port) conf.setPort(p_port->get());
+        if(p_ttl)  conf.setTTL(p_ttl->get());
     }
 
     // Set name of this task context.
-    this->setName(conf.name);
+    this->setName(conf.getName());
 }
 
 ////////////////////////////////CALLBACKS///////////////////////////
-void RootModule::serviceAdded_(dfki::communication::OrocosComponentRemoteService rms)
+void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
 {
     if(mts != NULL)
     {
@@ -367,12 +367,12 @@ void RootModule::serviceAdded_(dfki::communication::OrocosComponentRemoteService
     std::string envID;
     std::string type;
     std::string name;
-    ModuleID::splitID(rms.getName(), &envID, &type, &name);
+    ModuleID::splitID(se.getServiceDescription().getName(), &envID, &type, &name);
 
     // Connect to the first appropriate MTS (same environment id).    
     if(ModuleID::getEnvID(this->getName()) == envID && type == "MTA")
     {
-        mts = connectToRemoteModule(rms);
+        mts = connectToRemoteModule(se);
         if(mts != NULL)
         {
             log(RTT::Info) << "Connected to a message transport service (MTS)" << RTT::endlog();
@@ -381,12 +381,12 @@ void RootModule::serviceAdded_(dfki::communication::OrocosComponentRemoteService
     }
 }
 
-void RootModule::serviceRemoved_(dfki::communication::OrocosComponentRemoteService rms)
+void RootModule::serviceRemoved_(dfki::communication::ServiceEvent se)
 {
     
-    if(remoteConnectionsMap.find(rms.getName()) != remoteConnectionsMap.end())
+    if(remoteConnectionsMap.find(se.getServiceDescription().getName()) != remoteConnectionsMap.end())
     {
-        disconnectFromService(rms);
+        disconnectFromService(se);
     }
 }
 
@@ -474,14 +474,14 @@ std::string RootModule::getMTAinEnvID(std::string env)
 ////////////////////////////////////////////////////////////////////
 //                           PRIVATE                              //
 ////////////////////////////////////////////////////////////////////
-void RootModule::serviceAdded(dfki::communication::OrocosComponentRemoteService rms)
+void RootModule::serviceAdded(dfki::communication::ServiceEvent se)
 {
-    serviceAdded_(rms);
+    serviceAdded_(se);
 }
 
-void RootModule::serviceRemoved(dfki::communication::OrocosComponentRemoteService rms)
+void RootModule::serviceRemoved(dfki::communication::ServiceEvent se)
 {
-    serviceRemoved_(rms);
+    serviceRemoved_(se);
 }
 } // namespace modules
 
