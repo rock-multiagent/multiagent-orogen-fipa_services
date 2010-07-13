@@ -1,14 +1,18 @@
 /*
- * \file ModuleID.hpp
+ * \file    ModuleID.hpp
  *  
  * \brief   Class to split the module ID into ENVID, TYPE, NAME.
  *
- * \details For the documentation of source files take a look at the source file code.
+ * \details Class is used to extract the information of the module id.
+ *          These are the environmental ID (unique for every pc), the
+ *          type of the module (at the moment CHAT, LOG, MTA, PROXY, ROOT),
+ *          and for non-MTAs the name. The whole module ID has to be unique
+ *          within all modules.
  *          
  *          German Research Center for Artificial Intelligence\n
  *          Project: Rimres
  *
- * \date    07.07.2010
+ * \date    13.07.2010
  *
  * \author  Stefan.Haase@dfki.de
  */
@@ -32,7 +36,7 @@ namespace modules
  * The name of the message transport agents is ENVID-TYPE.
  * Each ID has to be unique within the framework.
  * - ENVID: Environment ID. Every module on one pc should have the same ENVID.
- * - TYPE: Type of the module.  At the moment: ROOT, LOG, MTA, CHAT.
+ * - TYPE: Type of the module.  At the moment: CHAT, LOG, MTA, PROXY, ROOT
  * - NAME: Name of the module. This field is empty for all MTAs 
  *         (because there is only one MTA in each environment).
  * This class will be extended with an xml file, where all the available

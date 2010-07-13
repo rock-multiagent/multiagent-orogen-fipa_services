@@ -281,11 +281,11 @@ void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_port
     std::vector<RTT::PortInterface*>::const_iterator it;
     for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
     { 
-	modules::Vector message;
-	RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
-	((RTT::InputPort<modules::Vector>*)read_port)->read(message);
-	log(RTT::Info) << "Received new message on port " << (*it)->getName() << " of size " << message.size() << RTT::endlog();
-	delete read_port;
+	    modules::Vector message;
+	    RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
+	    ((RTT::InputPort<modules::Vector>*)read_port)->read(message);
+	    log(RTT::Info) << "Received new message on port " << (*it)->getName() << " of size " << message.size() << RTT::endlog();
+	    delete read_port;
     }
 	
 /*    if(mts != NULL)

@@ -1,3 +1,20 @@
+/*
+ * \file    RootModule.hpp
+ *  
+ * \brief   Base class supporting module detection, configuration and dynamic port connection.
+ *
+ * \details Module will use ../configuration/module.xml for configuration and connect to
+ *          the MTA with the same environment ID. Use \a connectToRemoteModule() to create
+ *          a dynamic connection. All the connection are stored within the \a remoteConnectionsMap.
+ *          
+ *          German Research Center for Artificial Intelligence\n
+ *          Project: Rimres
+ *
+ * \date    13.07.2010
+ *
+ * \author  Stefan.Haase@dfki.de, Stanislav.Gutev@dfki.de
+ */
+
 #ifndef MODULES_ROOTMODULE_TASK_HPP
 #define MODULES_ROOTMODULE_TASK_HPP
 
@@ -170,6 +187,7 @@ friend class RootModuleBase;
 	bool createAndConnectPorts(std::string const & remote_name, 
             std::string const & remote_ior);
 
+ protected:
     /** Contains the service(module) informations, used to configure 'ServiceDiscovery'. */
     dfki::communication::ServiceDiscovery::Configuration conf;
 
