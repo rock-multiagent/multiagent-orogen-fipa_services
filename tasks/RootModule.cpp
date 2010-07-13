@@ -23,9 +23,11 @@ namespace modules
 ////////////////////////////////////////////////////////////////////
 //                           PUBLIC                               //
 ////////////////////////////////////////////////////////////////////
-RootModule::RootModule(std::string const& name) : RootModuleBase(name),
+RootModule::RootModule(std::string const& name, 
+            std::string const& conf_file) : RootModuleBase(name),
         serviceDiscovery(NULL),
-        mts(NULL)
+        mts(NULL),
+        configuration_file(conf_file)
 {
     conf = dc::ServiceConfiguration(name, "_rimres._tcp");
     sem_init(&connectSemaphore, 1, 1); // Shared between processes and value one.
@@ -264,7 +266,7 @@ bool RootModule::configureHook()
     {
         RTT::log().setLogLevel( RTT::Logger::Info );
     }
-    fillModuleInfo("");
+    fillModuleInfo();
     startServiceDiscovery();
     return true;
 }
@@ -315,7 +317,7 @@ void RootModule::cleanupHook()
 ////////////////////////////////////////////////////////////////////
 //                           PROTECTED                            //
 ////////////////////////////////////////////////////////////////////
-void RootModule::fillModuleInfo(std::string const & configuration)
+void RootModule::fillModuleInfo()
 {
     // Set default values. Random Name for the module.
     char buffer[sizeof(int)*8+1];
@@ -326,14 +328,14 @@ void RootModule::fillModuleInfo(std::string const & configuration)
     conf.setType("_rimres._tcp");
     conf.setPort(12000);
     conf.setTTL(0);
-//    conf.setRawDescriptions(RTT::Corba::ControlTaskServer::getIOR(this));
+    //conf.setRawDescriptions(RTT::Corba::ControlTaskServer::getIOR(this));
     conf.setDescription("IOR", RTT::Corba::ControlTaskServer::getIOR(this));
     // Try to load the config-file.
     std::string module_path = "";
-    if (configuration != "")
-	module_path = configuration;
+    if (configuration_file != "")
+	    module_path = configuration_file;
     else 
-	module_path = "../configuration/module.xml";
+	    module_path = "../configuration/module.xml";
     if(!this->marshalling()->loadProperties(module_path))
     {
         log(RTT::Warning) << "Could not load properties " <<
@@ -376,7 +378,7 @@ void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
         if(mts != NULL)
         {
             log(RTT::Info) << "Connected to a message transport service (MTS)" << RTT::endlog();
-            sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
+            //sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
         }
     }
 }

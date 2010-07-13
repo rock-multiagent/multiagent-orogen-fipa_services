@@ -54,7 +54,8 @@ class RootModule : public RootModuleBase
 {
 friend class RootModuleBase;
  public:
-    RootModule(std::string const& name = "modules::RootModule");
+    RootModule(std::string const& name = "modules::RootModule",
+            std::string const& conf_file = "");
     ~RootModule();
 
     /**
@@ -164,8 +165,11 @@ friend class RootModuleBase;
      * be used
      * Additionally it resets the name of the TaskContext!
      * If the file does not exists, it will be created.
+     * Uses \a configuration_file describing the path of the xml-conf-file.
      */
-    void fillModuleInfo(std::string const & configuration);
+    void fillModuleInfo();
+
+    std::string getMTAinEnvID(std::string);
 
  protected: // CALLBACKS
     /**
@@ -208,8 +212,7 @@ friend class RootModuleBase;
      */
     dfki::communication::ServiceDiscovery* serviceDiscovery;
 
-    std::string getMTAinEnvID(std::string);
-
+	std::string configuration_file;
 
  private: // CALLBACKS (private because they can not be overwritten, use protected ones)
     /**
