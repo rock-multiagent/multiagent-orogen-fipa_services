@@ -8,7 +8,7 @@
 #include <rtt/Ports.hpp>
 #include <rtt/Logger.hpp>
 
-#include <service-discovery/OrocosComponentService.h>
+#include <service-discovery/ServiceDiscovery.h>
 
 #include "root_module_data.h"
 
@@ -40,7 +40,7 @@ class RemoteConnection
 {  
  public:
     RemoteConnection(RTT::TaskContext* task_context_local, 
-            dfki::communication::OrocosComponentRemoteService rms);
+            dfki::communication::ServiceEvent se);
 
     RemoteConnection(RTT::TaskContext* task_context_local, 
         std::string remote_name, std::string remote_ior);

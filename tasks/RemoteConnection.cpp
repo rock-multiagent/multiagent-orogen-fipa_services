@@ -9,24 +9,26 @@ namespace modules
 //                           PUBLIC                               //
 ////////////////////////////////////////////////////////////////////
 RemoteConnection::RemoteConnection(RTT::TaskContext* task_context_local, 
-            dfki::communication::OrocosComponentRemoteService rms) :
+            dfki::communication::ServiceEvent se) :
             taskContext(task_context_local),
             controlTaskProxy(NULL),
             inputPort(NULL),
             outputPort(NULL)
 {
-    remoteModuleName = rms.getName();
-    remoteIOR = rms.getIOR();
+    if (RTT::log().getLogLevel() < RTT::Logger::Info)
+    {
+        RTT::log().setLogLevel( RTT::Logger::Info );
+    }
+
+    remoteModuleName = se.getServiceDescription().getName();
+    remoteIOR = se.getServiceDescription().getDescription("IOR");
+    log(RTT::Info) << "remote IOR: " << remoteIOR << RTT::endlog();
     localModuleName = task_context_local->getName();
     localIOR = RTT::Corba::ControlTaskServer::getIOR(taskContext);    
     inputPortName = remoteModuleName + "->" + localModuleName + "_port";    
     outputPortName = localModuleName + "->" + remoteModuleName + "_port";
     isInitialized = false;
 
-    if (RTT::log().getLogLevel() < RTT::Logger::Info)
-    {
-        RTT::log().setLogLevel( RTT::Logger::Info );
-    }
 }
 
 RemoteConnection::RemoteConnection(RTT::TaskContext* task_context_local, 

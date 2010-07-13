@@ -10,7 +10,6 @@
 
 #include <rtt/Ports.hpp>
 
-#include <service-discovery/OrocosComponentService.h>
 #include <service-discovery/ServiceDiscovery.h>
 
 // A macro to disallow the copy constructor and operator= functions
@@ -30,7 +29,7 @@ namespace modules
 class RemoteConnection;
 
 /**
- * Basis Modul.
+ * Basis Module.
  * Connect to the MTS automatically and allows to create the connection
  * to other modules dynamically (if neccessary).
  */
@@ -47,9 +46,9 @@ friend class RootModuleBase;
      * with the input ports. 
      * @returns NULL if fails. 
      */
-    RemoteConnection* connectToRemoteModule(dfki::communication::OrocosComponentRemoteService rms);
+    RemoteConnection* connectToRemoteModule(dfki::communication::ServiceEvent se);
 
-    void disconnectFromService(dfki::communication::OrocosComponentRemoteService rms);
+    void disconnectFromService(dfki::communication::ServiceEvent se);
 
     RTT::NonPeriodicActivity* getNonPeriodicActivity();
 
@@ -74,7 +73,7 @@ friend class RootModuleBase;
 
     /**
      * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
-     * this module on the network (with 'OrocosComponentLocalService'), collect all 
+     * this module on the network (with 'ServiceEvent'), collect all 
      * other available services (with 'afServiceBrowser') and defines callbacks.
      */
     void startServiceDiscovery();
@@ -155,12 +154,12 @@ friend class RootModuleBase;
     /**
      * Callback function adds the newly discovered service if its unknown.
      */
-	void serviceAdded_(dfki::communication::OrocosComponentRemoteService rms);
+	void serviceAdded_(dfki::communication::ServiceEvent rms);
 
     /**
      * Removes the service from the list if it disappears.
      */
-	void serviceRemoved_(dfki::communication::OrocosComponentRemoteService rms);
+	void serviceRemoved_(dfki::communication::ServiceEvent rms);
 
  protected: // METHODS
     /**
@@ -171,7 +170,7 @@ friend class RootModuleBase;
             std::string const & remote_ior);
 
     /** Contains the service(module) informations, used to configure 'ServiceDiscovery'. */
-    dfki::communication::ServiceDiscovery::Configuration conf;
+    dfki::communication::ServiceConfiguration conf;
 
     /**
      * Contains all the connections (IO-ports and Control TaskProxy) 
@@ -198,12 +197,12 @@ friend class RootModuleBase;
     /**
      * Callback function adds the newly discovered service if its unknown.
      */
-	void serviceAdded(dfki::communication::OrocosComponentRemoteService rms);
+	void serviceAdded(dfki::communication::ServiceEvent rms);
 
     /**
      * Removes the service from the list if it disappears.
      */
-	void serviceRemoved(dfki::communication::OrocosComponentRemoteService rms);
+	void serviceRemoved(dfki::communication::ServiceEvent rms);
 
  private:
     sem_t connectSemaphore; // TODO: Add semaphores in 'createAndConnectPorts()'.
