@@ -19,6 +19,8 @@
 #define MODULES_ROOTMODULE_TASK_HPP
 
 #include "modules/RootModuleBase.hpp"
+
+#include <semaphore.h>
 #include <stdint.h>
 
 #include <list>
@@ -169,8 +171,6 @@ friend class RootModuleBase;
      */
     void fillModuleInfo();
 
-    std::string getMTAinEnvID(std::string);
-
  protected: // CALLBACKS
     /**
      * Callback function adds the newly discovered service if its unknown.
@@ -226,7 +226,7 @@ friend class RootModuleBase;
 	void serviceRemoved(dfki::communication::ServiceEvent rms);
 
  private:
-    sem_t connectSemaphore; // TODO: Add semaphores in 'createAndConnectPorts()'.
+    sem_t* semaphoreConnect; // Used in createAndConnectPorts().
     DISALLOW_COPY_AND_ASSIGN(RootModule);
 };
 } // namespace modules

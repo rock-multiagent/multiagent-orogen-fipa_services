@@ -27,10 +27,14 @@ RootModule::RootModule(std::string const& name,
             std::string const& conf_file) : RootModuleBase(name),
         serviceDiscovery(NULL),
         mts(NULL),
-        configuration_file(conf_file)
+        configuration_file(conf_file),
+        semaphoreConnect(NULL),
+        conf(),
+        remoteConnectionsMap()
 {
     conf = dc::ServiceConfiguration(name, "_rimres._tcp");
-    sem_init(&connectSemaphore, 1, 1); // Shared between processes and value one.
+    semaphoreConnect = new sem_t();
+    sem_init(semaphoreConnect, 1, 1); // Shared between processes and value one.
     // See 'configureHook()'.
 }
 
@@ -51,6 +55,11 @@ RootModule::~RootModule()
     remoteConnectionsMap.clear();
     // The mts-connection has been deleted as well.
     mts = NULL;
+    if(semaphoreConnect)
+    {
+        delete semaphoreConnect;
+        semaphoreConnect = NULL;
+    }
     // See 'cleanupHook()'.
 }
 
@@ -64,7 +73,7 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
                 "' already established. " << RTT::endlog();
         return NULL;
     }
-    // Do not connect to yourself
+    // Do not connect to yourself.
     if(se.getServiceDescription().getName() == conf.getName())
     {
         log(RTT::Warning) << "Modules are not allowed to connect to themselves." << 
@@ -371,8 +380,10 @@ void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
     std::string name;
     ModuleID::splitID(se.getServiceDescription().getName(), &envID, &type, &name);
 
-    // Connect to the first appropriate MTS (same environment id).    
-    if(ModuleID::getEnvID(this->getName()) == envID && type == "MTA")
+    // Connect to the first appropriate MTS (same environment id). 
+    // And connect to every LOG-Module.   
+    if((ModuleID::getEnvID(this->getName()) == envID && type == "MTA") ||
+            type == "LOG")
     {
         mts = connectToRemoteModule(se);
         if(mts != NULL)
@@ -393,16 +404,17 @@ void RootModule::serviceRemoved_(dfki::communication::ServiceEvent se)
 }
 
 ////////////////////////////////METHODS////////////////////////////
-//add connection to the list at the end
 bool RootModule::createAndConnectPorts(std::string const & remote_name, 
         std::string const & remote_ior)
 {
+    sem_wait(semaphoreConnect);
     // Create ports and connect local output to remote input.
     // Do nothing if the connection have already be established.
     if(remoteConnectionsMap.find(remote_name) != remoteConnectionsMap.end())
     {
         log(RTT::Warning) << "Connection to '" << remote_name << 
                 "' already established. " << RTT::endlog();
+        sem_post(semaphoreConnect);
         return false;
     }
 
@@ -413,6 +425,7 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
         log(RTT::Error) << "Connection to '" << remote_name << 
             "' could not be initialized." << RTT::endlog();
         delete rm; rm = NULL;
+        sem_post(semaphoreConnect);
         return false;
     }  
     // Connect the local output to the remote input.
@@ -428,6 +441,7 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
             "' of the remote module '" << remote_name << 
             "' could not be received." << RTT::endlog();
         delete rm; rm = NULL;
+        sem_post(semaphoreConnect);
         return false;
     }
 
@@ -448,29 +462,14 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
             "' cant be connected to the Inputport of '" <<
             remote_name << "'" << RTT::endlog();
         delete rm; rm = NULL;
+        sem_post(semaphoreConnect);
         return false;
     }
 
     log(RTT::Info) << "Connected to '" <<  remote_name << "'" << RTT::endlog();
     remoteConnectionsMap.insert(std::pair<std::string, RemoteConnection*>(remote_name, rm));
+    sem_post(semaphoreConnect);
     return true;
-}
-
-
-std::string RootModule::getMTAinEnvID(std::string env) 
-{
-	std::string MTA = "";
-	std::vector<std::string> services = serviceDiscovery->getServiceNames();
-	for (std::vector<std::string>::iterator it = services.begin(); it != services.end(); ++it)
-	{
-		if ( ModuleID::getEnvID(*it) == env ) {
-			if ( ModuleID::getType(*it) == "MTA" ) {
-				MTA = (*it);
-				break; 		
-			}
-		}
-	}
-	return MTA;
 }
 
 ////////////////////////////////////////////////////////////////////
