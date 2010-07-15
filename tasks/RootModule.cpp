@@ -30,7 +30,8 @@ RootModule::RootModule(std::string const& name,
         configuration_file(conf_file),
         semaphoreConnect(NULL),
         conf(),
-        remoteConnectionsMap()
+        remoteConnectionsMap(),
+        remoteConnectionsMapLogger()
 {
     conf = dc::ServiceConfiguration(name, "_rimres._tcp");
     semaphoreConnect = new sem_t();
@@ -61,6 +62,29 @@ RootModule::~RootModule()
         semaphoreConnect = NULL;
     }
     // See 'cleanupHook()'.
+}
+
+void RootModule::globalLog(RTT::LoggerLevel log_type, std::string message)
+{
+    // Global log, sending message to all log-modules.
+    // Build logging string with 'RTT::Logger/modname/msg'.
+    std::string msg = "x/" + this->getName() + "/" + message;
+    msg[0] = static_cast<int>(log_type); // log_type 0-6
+
+    // Send the message as a string to all logging modules using the direct ports.
+    std::map<std::string, RemoteConnection*>::iterator it;
+    for(it=remoteConnectionsMapLogger.begin(); 
+            it != remoteConnectionsMapLogger.end(); it++)
+    {
+        RTT::OutputPort<Vector>* output_port = it->second->getOutputPort();
+        if(output_port) 
+        {
+            struct Vector msg_vec(msg);
+            output_port->write(msg_vec);
+        }
+    }
+    // Local log.
+    log(log_type) << message << RTT::endlog();
 }
 
 //todo: add the rm to the map at the end, delete rm if connection fails.
@@ -157,8 +181,9 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
 
 void RootModule::disconnectFromService(dc::ServiceEvent se)
 {    
+    std::string mod_name = se.getServiceDescription().getName();
     map<std::string, RemoteConnection*>::iterator it;
-    it=remoteConnectionsMap.find(se.getServiceDescription().getName());
+    it=remoteConnectionsMap.find(mod_name);
     if(it != remoteConnectionsMap.end()) { // found
         // If its the MTS, remove shortcut to this service.
         std::string output_str = "Removed service '";
@@ -166,6 +191,11 @@ void RootModule::disconnectFromService(dc::ServiceEvent se)
         {
             mts = NULL;
             output_str = "Removed message transport service '";
+        }
+        // If its a logging module, remove entry in the log-mod-map.
+        if(ModuleID::getType(mod_name) == "LOG")
+        {
+            remoteConnectionsMapLogger.erase(mod_name);
         }
         // Ports and control task proxy will be removed.
         delete(it->second); it->second = NULL;
@@ -219,7 +249,7 @@ bool RootModule::sendMessage(std::string const& receiver, std::string const& msg
             // Convert message string to struct Vector (has to be done because '\0'
             // within the string interupts sending)
             struct Vector msg_vec(msg);
-            output_port->write(msg);
+            output_port->write(msg_vec);
             return true;
         } else {
             log(RTT::Warning) << "No output ports available for receiver " <<
@@ -299,6 +329,7 @@ void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_port
 	    delete read_port;
     }
 	
+    globalLog(RTT::Info, "Ein Test");
 /*    if(mts != NULL)
     {
         std::string test_str("Dies ist ein Test, es ist ein längerer String, damit ich auch sehe, ob ein Speicherverlust auftritt\
@@ -380,10 +411,8 @@ void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
     std::string name;
     ModuleID::splitID(se.getServiceDescription().getName(), &envID, &type, &name);
 
-    // Connect to the first appropriate MTS (same environment id). 
-    // And connect to every LOG-Module.   
-    if((ModuleID::getEnvID(this->getName()) == envID && type == "MTA") ||
-            type == "LOG")
+    // Connect to the first appropriate MTS (same environment id).  
+    if((ModuleID::getEnvID(this->getName()) == envID && type == "MTA"))
     {
         mts = connectToRemoteModule(se);
         if(mts != NULL)
@@ -392,15 +421,22 @@ void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
             //sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
         }
     }
+    // Connect to every LOG-Module.  
+    if(type == "LOG")
+    {
+        RemoteConnection* rem_con_log = connectToRemoteModule(se);
+        if(rem_con_log != NULL)
+        {
+            // Creates a map with all logging modules connections.
+            remoteConnectionsMapLogger.insert(std::pair<std::string, RemoteConnection*>
+                (se.getServiceDescription().getName(), rem_con_log));
+        }
+    }
 }
 
 void RootModule::serviceRemoved_(dfki::communication::ServiceEvent se)
 {
-    
-    if(remoteConnectionsMap.find(se.getServiceDescription().getName()) != remoteConnectionsMap.end())
-    {
-        disconnectFromService(se);
-    }
+    disconnectFromService(se);
 }
 
 ////////////////////////////////METHODS////////////////////////////

@@ -10,7 +10,10 @@
  *          German Research Center for Artificial Intelligence\n
  *          Project: Rimres
  *
- * \date    13.07.2010
+ * \date    15.07.2010
+ *
+ * \version 0.1 
+ *          Added global logger method.
  *
  * \author  Stefan.Haase@dfki.de, Stanislav.Gutev@dfki.de
  */
@@ -61,6 +64,14 @@ friend class RootModuleBase;
     ~RootModule();
 
     /**
+     * Sends the logging-message to all log-modules and store it
+     * locally.
+     * \param log-type RTT::Never, RTT::Fatal, RTT::Critical, RTT::Error, 
+     * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
+     */
+    void globalLog(RTT::LoggerLevel log_type, std::string message);
+
+    /**
      * Connects to the TaskContext 'rms'. The needed ports will be created
      * (on this and the remote module) and the output-ports will be connected 
      * with the input ports. 
@@ -68,6 +79,11 @@ friend class RootModuleBase;
      */
     RemoteConnection* connectToRemoteModule(dfki::communication::ServiceEvent se);
 
+    /**
+     * Deletes the connection to the module (ports and proxy).
+     * If its the MTA of this module or a logging module, 
+     * the shortcut is removed as well.
+     */
     void disconnectFromService(dfki::communication::ServiceEvent se);
 
     RTT::NonPeriodicActivity* getNonPeriodicActivity();
@@ -199,6 +215,11 @@ friend class RootModuleBase;
      * to the other modules.
      */
     std::map<std::string, RemoteConnection*> remoteConnectionsMap;
+
+    /**
+     * Contains all the connections to the logger modules.
+     */
+    std::map<std::string, RemoteConnection*> remoteConnectionsMapLogger;
 
     /**
      * Direct pointer to the connected Message Transport Service.

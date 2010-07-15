@@ -54,7 +54,6 @@ RemoteConnection::RemoteConnection(RTT::TaskContext* task_context_local,
 
 RemoteConnection::~RemoteConnection()
 {
-    std::cout << "destructor remoteConnection. " << std::endl;
     if(controlTaskProxy != NULL)
     {
         taskContext->removePeer(remoteIOR);

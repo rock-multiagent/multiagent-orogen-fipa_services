@@ -49,6 +49,7 @@ class ModuleID
      * Splits up the passed 'module_id' in the 'envID', 'type' and 'module_name'
      * (pointers must not be NULL). 'tokens' contains the separation-chars,
      * default is '_'. Use this method if you need all parts of the module-id. 
+     * If the id could not be passed, empty strings will be set.
      */
     static bool splitID(std::string module_id,
             std::string* envID,
