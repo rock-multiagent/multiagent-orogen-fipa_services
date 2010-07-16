@@ -329,7 +329,7 @@ void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_port
 	    delete read_port;
     }
 	
-    globalLog(RTT::Info, "Ein Test");
+    //globalLog(RTT::Info, "Ein Test");
 /*    if(mts != NULL)
     {
         std::string test_str("Dies ist ein Test, es ist ein längerer String, damit ich auch sehe, ob ein Speicherverlust auftritt\

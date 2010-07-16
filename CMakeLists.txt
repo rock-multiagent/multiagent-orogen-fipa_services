@@ -10,13 +10,11 @@ include_directories(${SERVICE_DISCOVERY_INCLUDE_DIRS})
 link_directories(${SERVICE_DISCOVERY_LIBRARY_DIRS})
 
 # using the scripts in cmake
-find_package(AVAHI REQUIRED)
 find_package(SIGC++ REQUIRED)
-include_directories( ${AVAHI_INCLUDES} ${SIGC++_INCLUDES})
-
+include_directories ( 
+    ${SIGC++_INCLUDES}
+)
 
 INCLUDE(modulesBase)
 
-# FIND_PACKAGE(KDL)
-# FIND_PACKAGE(OCL)
 

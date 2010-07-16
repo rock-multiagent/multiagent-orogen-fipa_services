@@ -7,6 +7,7 @@
   <logo>http://</logo>
   <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
   <depend package="framework/service-discovery" />
+  <depend package="sigc" />
   <versioncontrol type="git" url="" />
   <export>
     <cpp cflags="" lflags="" />
