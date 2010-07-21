@@ -25,7 +25,7 @@
 
 #include <semaphore.h>
 #include <stdint.h>
-
+#include <stdarg.h>
 #include <list>
 #include <map>
 #include <string>
@@ -70,6 +70,15 @@ friend class RootModuleBase;
      * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
      */
     void globalLog(RTT::LoggerLevel log_type, std::string message);
+
+    /**
+     * Converts the arguments into a string and calls the method 
+     * globalLog(RTT::LoggerLevel log_type, std::string message) to send 
+     * the message
+     * \param log-type RTT::Never, RTT::Fatal, RTT::Critical, RTT::Error, 
+     * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
+     */
+    void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
 
     /**
      * Connects to the TaskContext 'rms'. The needed ports will be created

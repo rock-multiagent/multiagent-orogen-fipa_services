@@ -64,6 +64,19 @@ RootModule::~RootModule()
     // See 'cleanupHook()'.
 }
 
+void RootModule::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
+{
+    int n = 100;	
+	char buffer[512];
+	va_list arguments;
+
+	va_start(arguments, format);
+	n = vsnprintf(buffer, sizeof(buffer), format, arguments);
+	va_end(arguments);
+    
+    globalLog(log_type, std::string(buffer));
+}
+
 void RootModule::globalLog(RTT::LoggerLevel log_type, std::string message)
 {
     // Global log, sending message to all log-modules.
@@ -93,23 +106,22 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
     // Do nothing if the connection have already be established.
     if(remoteConnectionsMap.find(se.getServiceDescription().getName()) != remoteConnectionsMap.end())
     {
-        log(RTT::Warning) << "Connection to '" << se.getServiceDescription().getName() << 
-                "' already established. " << RTT::endlog();
+        globalLog(RTT::Warning, "Connection to '%s' already established",
+                se.getServiceDescription().getName().c_str());
         return NULL;
     }
     // Do not connect to yourself.
     if(se.getServiceDescription().getName() == conf.getName())
     {
-        log(RTT::Warning) << "Modules are not allowed to connect to themselves." << 
-            RTT::endlog();
+        globalLog(RTT::Warning, "Modules are not allowed to connect to themselves.");
         return NULL;
     }
     // Create and add new connection.
     RemoteConnection* rm = new RemoteConnection(this, se);
     if(!rm->initialize())
     {
-        log(RTT::Error) << "Connection to '" << se.getServiceDescription().getName() << 
-            "' could not be initialized." << RTT::endlog(); 
+        globalLog(RTT::Error, "Connection to '%s' could not be initialized", 
+                se.getServiceDescription().getName().c_str()); 
         delete rm; rm = NULL;
         return NULL;
     }
@@ -120,16 +132,16 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
     // Remote Methods are ready?
     if(!create_remote_ports.ready())
     {
-        log(RTT::Error) << "Connection on the remote module '" << se.getServiceDescription().getName() << 
-            "' could not be created." << RTT::endlog();
+        globalLog(RTT::Error, "Connection on the remote module '%s' could not be created", 
+                se.getServiceDescription().getName().c_str());
         delete rm; rm = NULL;
         return NULL;
     }
     // Create remote connection.
     if(!create_remote_ports(rm->getLocalModuleName(), rm->getLocalIOR()))
     {
-        log(RTT::Error) << "Connection on the remote module '" << se.getServiceDescription().getName() << 
-            "' could not be created." << RTT::endlog();
+        globalLog(RTT::Error, "Connection on the remote module '%s' could not be created", 
+                se.getServiceDescription().getName().c_str());
         delete rm; rm = NULL;
         return NULL;
     }
@@ -137,8 +149,8 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
     // Refresh control task proxy.
     if(!rm->syncControlTaskProxy())
     {
-        log(RTT::Error) << "Connection to '" << se.getServiceDescription().getName() <<
-            "' could not be reestablished." << RTT::endlog();
+        globalLog(RTT::Error, "Connection to '%s' could not be reestablished", 
+                se.getServiceDescription().getName().c_str()); 
         delete rm; rm = NULL;
         return NULL;
     }
@@ -149,9 +161,8 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
             getPort(rm->getOutputPortName());
     if(remoteinputport == NULL)
     {
-        log(RTT::Error) << "Inputport '" << rm->getOutputPortName() <<
-            "' of the remote module '" << se.getServiceDescription().getName() << 
-            "' could not be received." << RTT::endlog();
+        globalLog(RTT::Error, "Inputport '%s' of the remote module '%s' could not be resolved",
+            rm->getOutputPortName().c_str(), se.getServiceDescription().getName().c_str());
         return NULL;
     }
 
@@ -166,13 +177,12 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
     // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, true=pull(problem here) false=push)
     if(!rm->getOutputPort()->connectTo(*remoteinputport, RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
     {
-        log(RTT::Error) << "Outputport '" << rm->getOutputPortName() <<
-            "' cant be connected to the Inputport of " <<
-            se.getServiceDescription().getName() << RTT::endlog();
+        globalLog(RTT::Error, "Outputport '%s' cant be connected to the Input port of %s",
+            rm->getOutputPortName().c_str(), se.getServiceDescription().getName().c_str());
         delete rm; rm = NULL;
         return NULL;
     }
-    log(RTT::Info) << "Connected to '" <<  se.getServiceDescription().getName() << "'" << RTT::endlog();
+    globalLog(RTT::Info, "Connected to '%s'", se.getServiceDescription().getName().c_str());
     // Add to map of valid connections.
     remoteConnectionsMap.insert(std::pair<std::string, RemoteConnection*>
             (se.getServiceDescription().getName(), rm));
@@ -200,10 +210,10 @@ void RootModule::disconnectFromService(dc::ServiceEvent se)
         // Ports and control task proxy will be removed.
         delete(it->second); it->second = NULL;
         remoteConnectionsMap.erase(it);
-        log(RTT::Info) << output_str << se.getServiceDescription().getName() << "'" << RTT::endlog();
+        globalLog(RTT::Info, "%s %s '", output_str.c_str(), se.getServiceDescription().getName().c_str());
     } else {
-        log(RTT::Warning) << "Connection to '" << se.getServiceDescription().getName() << 
-            "' unknown, can not disconnect." << RTT::endlog();
+        globalLog(RTT::Warning, "Connection to '%s' unknown, can not disconnect",
+            se.getServiceDescription().getName().c_str());
     }
 }
 
@@ -226,13 +236,13 @@ bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
             output_port->write(msg);
             return true;
         } else {
-            log(RTT::Warning) << "No output ports available for receiver " <<
-                receiver << ", message could not be sent." << RTT::endlog();
+            globalLog(RTT::Warning, "No output ports available for receiver %s, message could not be sent",
+                receiver.c_str());
             return false;
         }
     } else {
-        log(RTT::Warning) << "Receiver " << receiver << 
-                " unknown, message could not be sent." << RTT::endlog();
+        globalLog(RTT::Warning, "Receiver %s unknown, message could not be sent",
+                receiver.c_str());
         return false;
     }
 }
@@ -252,13 +262,13 @@ bool RootModule::sendMessage(std::string const& receiver, std::string const& msg
             output_port->write(msg_vec);
             return true;
         } else {
-            log(RTT::Warning) << "No output ports available for receiver " <<
-                receiver << ", message could not be sent." << RTT::endlog();
+            globalLog(RTT::Warning, "No output ports available for receiver %s, message could not be sent",
+                receiver.c_str());
             return false;
         }
     } else {
-        log(RTT::Warning) << "Receiver " << receiver << 
-                " unknown, message could not be sent." << RTT::endlog();
+        globalLog(RTT::Warning, "Receiver %s unknown, message could not be sent",
+                receiver.c_str());
         return false;
     }
 }
@@ -292,10 +302,10 @@ void RootModule::startServiceDiscovery()
     try{
         serviceDiscovery->start(conf);
     } catch(exception& e) {
-        log(RTT::Error) << e.what() << RTT::endlog();
+        globalLog(RTT::Error, "%s", e.what());
     }
-    log(RTT::Info) << "Started service '" << this->getName() << "' with avahi-type '" 
-        << conf.getType() << "'" << RTT::endlog();
+    globalLog(RTT::Info, "Started service '%s' with avahi-type '%s'",
+        this->getName().c_str(), conf.getType().c_str());
 }
 
 ////////////////////////////////HOOKS///////////////////////////////
@@ -339,7 +349,8 @@ void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_port
 	    modules::Vector message;
 	    RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
 	    ((RTT::InputPort<modules::Vector>*)read_port)->read(message);
-	    log(RTT::Info) << "Received new message on port " << (*it)->getName() << " of size " << message.size() << RTT::endlog();
+	    globalLog(RTT::Info, "Received new message on port %s of size",
+                (*it)->getName().c_str(), message.size());
 	    delete read_port;
     }
 }
@@ -368,8 +379,8 @@ void RootModule::fillModuleInfo()
 	    module_path = "../configuration/module.xml";
     if(!this->marshalling()->loadProperties(module_path))
     {
-        log(RTT::Warning) << "Could not load properties " <<
-            module_path << ", default values are used." << RTT::endlog();
+        globalLog(RTT::Warning, "Could not load properties %s, default values are used",
+            module_path.c_str());
     } else {
         RTT::PropertyBag* pb = this->properties();
         // Returns NULL if the property could not be loaded. 
@@ -391,29 +402,29 @@ void RootModule::fillModuleInfo()
 ////////////////////////////////CALLBACKS///////////////////////////
 void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
 {
-    if(mts != NULL)
-    {
-        return;
-    }
-
     std::string envID;
     std::string type;
     std::string name;
     ModuleID::splitID(se.getServiceDescription().getName(), &envID, &type, &name);
 
+    globalLog(RTT::Info, "type: %s", type.c_str());
+
     // Connect to the first appropriate MTS (same environment id).  
-    if((ModuleID::getEnvID(this->getName()) == envID && type == "MTA"))
+    if((ModuleID::getEnvID(this->getName()) == envID && type == "MTA") && mts == NULL)
     {
         mts = connectToRemoteModule(se);
         if(mts != NULL)
         {
-            log(RTT::Info) << "Connected to a message transport service (MTS)" << RTT::endlog();
+            globalLog(RTT::Info, "Connected to a message transport service (MTS)");
             //sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
         }
     }
+
+    // TODO ?
     // Connect to every LOG-Module.  
     if(type == "LOG")
     {
+        
         RemoteConnection* rem_con_log = connectToRemoteModule(se);
         if(rem_con_log != NULL)
         {
@@ -438,8 +449,8 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
     // Do nothing if the connection have already be established.
     if(remoteConnectionsMap.find(remote_name) != remoteConnectionsMap.end())
     {
-        log(RTT::Warning) << "Connection to '" << remote_name << 
-                "' already established. " << RTT::endlog();
+        globalLog(RTT::Warning, "Connection to '%s' already established", 
+            remote_name.c_str());
         sem_post(semaphoreConnect);
         return false;
     }
@@ -448,8 +459,8 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
     RemoteConnection* rm =  new RemoteConnection(this, remote_name, remote_ior);
     if(!rm->initialize())
     {
-        log(RTT::Error) << "Connection to '" << remote_name << 
-            "' could not be initialized." << RTT::endlog();
+        globalLog(RTT::Error, "Connection to '%s' could not be initialized", 
+            remote_name.c_str());        
         delete rm; rm = NULL;
         sem_post(semaphoreConnect);
         return false;
@@ -463,9 +474,8 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
             getPort(rm->getOutputPortName());
     if(remoteinputport == 0)
     {
-        log(RTT::Error) << "Inputport '" << rm->getOutputPortName() <<
-            "' of the remote module '" << remote_name << 
-            "' could not be received." << RTT::endlog();
+        globalLog(RTT::Error, "Inputport '%s' of the remote module '%s' could not be resolved",
+            rm->getOutputPortName().c_str(), remote_name.c_str());
         delete rm; rm = NULL;
         sem_post(semaphoreConnect);
         return false;
@@ -484,15 +494,14 @@ bool RootModule::createAndConnectPorts(std::string const & remote_name,
     // int size, int lock_policy = LOCK_FREE, bool init_connection = false, bool pull = false
     if(!rm->getOutputPort()->connectTo(*remoteinputport, RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
     {
-        log(RTT::Error) << "Outputport '" << rm->getOutputPortName() <<
-            "' cant be connected to the Inputport of '" <<
-            remote_name << "'" << RTT::endlog();
+        globalLog(RTT::Error, "Outputport '%s' cant be connected to Inputport of '%s'",
+            rm->getOutputPortName().c_str(), remote_name.c_str());
         delete rm; rm = NULL;
         sem_post(semaphoreConnect);
         return false;
     }
 
-    log(RTT::Info) << "Connected to '" <<  remote_name << "'" << RTT::endlog();
+    globalLog(RTT::Info, "Connected to '%s'", remote_name.c_str());
     remoteConnectionsMap.insert(std::pair<std::string, RemoteConnection*>(remote_name, rm));
     sem_post(semaphoreConnect);
     return true;
