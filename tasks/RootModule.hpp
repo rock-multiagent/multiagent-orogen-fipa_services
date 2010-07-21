@@ -111,10 +111,17 @@ friend class RootModuleBase;
      * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
      * this module on the network (with 'ServiceEvent'), collect all 
      * other available services (with 'afServiceBrowser') and defines callbacks.
+     * \TODO Should return and use bool: No SD, no module start.
      */
     void startServiceDiscovery();
 
  public: // HOOKS
+    /** This hook is called by Orocos when the state machine transitions
+     * from Stopped to PreOperational, requiring the call to configureHook()
+     * before calling start() again.
+     */
+    void cleanupHook();
+
     /** This hook is called by Orocos when the state machine transitions
      * from PreOperational to Stopped. If it returns false, then the
      * component will stay in PreOperational. Otherwise, it goes into
@@ -130,12 +137,25 @@ friend class RootModuleBase;
      */
     bool configureHook();
 
+    /** This hook is called by Orocos when the component is in the
+     * RunTimeError state, at each activity step. See the discussion in
+     * updateHook() about triggering options.
+     *
+     * Call recovered() to go back in the Runtime state.
+     */
+    void errorHook();
+
     /** This hook is called by Orocos when the state machine transitions
      * from Stopped to Running. If it returns false, then the component will
      * stay in Stopped. Otherwise, it goes into Running and updateHook()
      * will be called.
      */
     bool startHook();
+
+    /** This hook is called by Orocos when the state machine transitions
+     * from Running to Stopped after stop() has been called.
+     */
+    void stopHook();
 
     /** This hook is called by Orocos when the component is in the Running
      * state, at each activity step. Here, the activity gives the "ticks"
@@ -152,28 +172,9 @@ friend class RootModuleBase;
      * third case the component is stopped and resetError() needs to be
      * called before starting it again.
      *
+     * \TODO Set priodic activity within module.xml?
      */
     void updateHook(std::vector<RTT::PortInterface*> const& updated_ports);
-    
-
-    /** This hook is called by Orocos when the component is in the
-     * RunTimeError state, at each activity step. See the discussion in
-     * updateHook() about triggering options.
-     *
-     * Call recovered() to go back in the Runtime state.
-     */
-    // void errorHook();
-
-    /** This hook is called by Orocos when the state machine transitions
-     * from Running to Stopped after stop() has been called.
-     */
-    void stopHook();
-
-    /** This hook is called by Orocos when the state machine transitions
-     * from Stopped to PreOperational, requiring the call to configureHook()
-     * before calling start() again.
-     */
-    void cleanupHook();
 
  protected:
     /**
@@ -198,7 +199,7 @@ friend class RootModuleBase;
      */
 	void serviceRemoved_(dfki::communication::ServiceEvent rms);
 
- protected: // METHODS
+ protected: // RPC-METHODS
     /**
      * Used within 'connectToRemoteModule()' to create the ports on the
      * remote module and to connect the remote output to the local input.

@@ -299,6 +299,10 @@ void RootModule::startServiceDiscovery()
 }
 
 ////////////////////////////////HOOKS///////////////////////////////
+void RootModule::cleanupHook()
+{
+}  
+
 bool RootModule::configureHook()
 {    
     if (RTT::log().getLogLevel() < RTT::Logger::Info)
@@ -310,10 +314,20 @@ bool RootModule::configureHook()
     return true;
 }
 
+void RootModule::errorHook()
+{
+    log(RTT::Info) << "Entering error state." << RTT::endlog();
+}
+
 bool RootModule::startHook()
 {
     // start SD
     return true;
+}
+
+void RootModule::stopHook()
+{
+    // stop SD?
 }
 
 void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
@@ -328,31 +342,7 @@ void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_port
 	    log(RTT::Info) << "Received new message on port " << (*it)->getName() << " of size " << message.size() << RTT::endlog();
 	    delete read_port;
     }
-	
-    //globalLog(RTT::Info, "Ein Test");
-/*    if(mts != NULL)
-    {
-        std::string test_str("Dies ist ein Test, es ist ein längerer String, damit ich auch sehe, ob ein Speicherverlust auftritt\
-            oder ob alles funktioniert. Wenn alles geht, dann könnte es daran gelegen haben, dass das struct Vector keinen Destructor hatte\
-            und daher den vector nicht gecleart hat.");
-        char buffer[33];
-        sprintf(buffer, "%d\n", test_counter);
-        std::string test_nr(buffer);
-        test_counter++;
-        if(test_counter < 100000)
-            sendMessage(mts->getRemoteModuleName(), test_nr + test_str);
-    }
-*/
 }
-
-void RootModule::stopHook()
-{
-    // stop SD?
-}
-
-void RootModule::cleanupHook()
-{
-}  
 
 ////////////////////////////////////////////////////////////////////
 //                           PROTECTED                            //
@@ -364,7 +354,7 @@ void RootModule::fillModuleInfo()
     srand(time(NULL));
     sprintf(buffer, "%d", rand() % 100000);
 
-    conf.setName("A_ROOT_rimresmodule" + std::string(buffer));
+    conf.setName("A_ROOT_DEFAULT" + std::string(buffer));
     conf.setType("_rimres._tcp");
     conf.setPort(12000);
     conf.setTTL(0);
