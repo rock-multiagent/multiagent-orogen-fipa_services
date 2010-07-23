@@ -6,6 +6,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#include <message-generator/ACLMessageOutputParser.h>
+#include <message-parser/message_parser.h>
 #include <rtt/corba/ControlTaskProxy.hpp>
 #include <rtt/corba/ControlTaskServer.hpp>
 #include <rtt/NonPeriodicActivity.hpp>
@@ -31,7 +33,7 @@ RootModule::RootModule(std::string const& name,
         semaphoreConnect(NULL),
         conf(),
         remoteConnectionsMap(),
-        remoteConnectionsMapLogger()
+        loggerSet()
 {
     conf = dc::ServiceConfiguration(name, "_rimres._tcp");
     semaphoreConnect = new sem_t();
@@ -64,44 +66,8 @@ RootModule::~RootModule()
     // See 'cleanupHook()'.
 }
 
-void RootModule::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
-{
-    int n = 100;	
-	char buffer[512];
-	va_list arguments;
-
-	va_start(arguments, format);
-	n = vsnprintf(buffer, sizeof(buffer), format, arguments);
-	va_end(arguments);
-    
-    globalLog(log_type, std::string(buffer));
-}
-
-void RootModule::globalLog(RTT::LoggerLevel log_type, std::string message)
-{
-    // Global log, sending message to all log-modules.
-    // Build logging string with 'RTT::Logger/modname/msg'.
-    std::string msg = "x/" + this->getName() + "/" + message;
-    msg[0] = static_cast<int>(log_type); // log_type 0-6
-
-    // Send the message as a string to all logging modules using the direct ports.
-    std::map<std::string, RemoteConnection*>::iterator it;
-    for(it=remoteConnectionsMapLogger.begin(); 
-            it != remoteConnectionsMapLogger.end(); it++)
-    {
-        RTT::OutputPort<Vector>* output_port = it->second->getOutputPort();
-        if(output_port) 
-        {
-            struct Vector msg_vec(msg);
-            output_port->write(msg_vec);
-        }
-    }
-    // Local log.
-    log(log_type) << message << RTT::endlog();
-}
-
 //todo: add the rm to the map at the end, delete rm if connection fails.
-RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
+RemoteConnection* RootModule::connectToModule(dc::ServiceEvent se)
 {
     // Do nothing if the connection have already be established.
     if(remoteConnectionsMap.find(se.getServiceDescription().getName()) != remoteConnectionsMap.end())
@@ -128,7 +94,7 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
     // Use remote method to create needed ports on the remote module.
     RTT::Corba::ControlTaskProxy* ctp = rm->getControlTaskProxy();
     RTT::Method <bool(std::string const &, std::string const &)> create_remote_ports = 
-            ctp->methods()->getMethod<bool(std::string const&, std::string const &)>("createAndConnectPorts");
+            ctp->methods()->getMethod<bool(std::string const&, std::string const &)>("rpcConnectToModule");
     // Remote Methods are ready?
     if(!create_remote_ports.ready())
     {
@@ -189,28 +155,16 @@ RemoteConnection* RootModule::connectToRemoteModule(dc::ServiceEvent se)
     return rm;
 } 
 
-void RootModule::disconnectFromService(dc::ServiceEvent se)
+void RootModule::disconnectFromModule(dc::ServiceEvent se)
 {    
     std::string mod_name = se.getServiceDescription().getName();
     map<std::string, RemoteConnection*>::iterator it;
     it=remoteConnectionsMap.find(mod_name);
     if(it != remoteConnectionsMap.end()) { // found
-        // If its the MTS, remove shortcut to this service.
-        std::string output_str = "Removed service '";
-        if(it->second == mts)
-        {
-            mts = NULL;
-            output_str = "Removed message transport service '";
-        }
-        // If its a logging module, remove entry in the log-mod-map.
-        if(ModuleID::getType(mod_name) == "LOG")
-        {
-            remoteConnectionsMapLogger.erase(mod_name);
-        }
         // Ports and control task proxy will be removed.
         delete(it->second); it->second = NULL;
         remoteConnectionsMap.erase(it);
-        globalLog(RTT::Info, "%s %s '", output_str.c_str(), se.getServiceDescription().getName().c_str());
+        globalLog(RTT::Info, "Disconnected from %s", se.getServiceDescription().getName().c_str());
     } else {
         globalLog(RTT::Warning, "Connection to '%s' unknown, can not disconnect",
             se.getServiceDescription().getName().c_str());
@@ -249,28 +203,8 @@ bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
 
 bool RootModule::sendMessage(std::string const& receiver, std::string const& msg)
 {
-    map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.find(receiver);
-    // Receiver known?
-    if(it != remoteConnectionsMap.end())
-    {
-        // Output ports available?
-        RTT::OutputPort<Vector>* output_port = it->second->getOutputPort();
-        if(output_port) {
-            // Convert message string to struct Vector (has to be done because '\0'
-            // within the string interupts sending)
-            struct Vector msg_vec(msg);
-            output_port->write(msg_vec);
-            return true;
-        } else {
-            globalLog(RTT::Warning, "No output ports available for receiver %s, message could not be sent",
-                receiver.c_str());
-            return false;
-        }
-    } else {
-        globalLog(RTT::Warning, "Receiver %s unknown, message could not be sent",
-                receiver.c_str());
-        return false;
-    }
+    struct Vector msg_vec(msg);
+    return sendMessage(receiver, msg_vec);
 }
 
 bool RootModule::sendMessageToMTA(Vector const& msg)
@@ -287,46 +221,21 @@ bool RootModule::sendMessageToMTA(Vector const& msg)
     return false;
 }  
 
-void RootModule::startServiceDiscovery()
-{
-    if(serviceDiscovery == NULL)
-    {
-        serviceDiscovery = new dc::ServiceDiscovery();
-//        conf.stringlist.push_back("Type=Basis");
-        serviceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
-            &RootModule::serviceAdded));
-        serviceDiscovery->removedComponentConnect(sigc::mem_fun(*this, 
-            &RootModule::serviceRemoved));
-
-    }
-    try{
-        serviceDiscovery->start(conf);
-    } catch(exception& e) {
-        globalLog(RTT::Error, "%s", e.what());
-    }
-    globalLog(RTT::Info, "Started service '%s' with avahi-type '%s'",
-        this->getName().c_str(), conf.getType().c_str());
-}
-
 ////////////////////////////////HOOKS///////////////////////////////
-void RootModule::cleanupHook()
-{
-}  
-
 bool RootModule::configureHook()
 {    
     if (RTT::log().getLogLevel() < RTT::Logger::Info)
     {
         RTT::log().setLogLevel( RTT::Logger::Info );
     }
-    fillModuleInfo();
+    configureModule();
     startServiceDiscovery();
     return true;
 }
 
 void RootModule::errorHook()
 {
-    log(RTT::Info) << "Entering error state." << RTT::endlog();
+    globalLog(RTT::Error, "Entering error state.");
 }
 
 bool RootModule::startHook()
@@ -335,30 +244,25 @@ bool RootModule::startHook()
     return true;
 }
 
-void RootModule::stopHook()
-{
-    // stop SD?
-}
-
 void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
 {
-    // Check input ports.
     std::vector<RTT::PortInterface*>::const_iterator it;
+    // Process message of all updated ports.
     for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
     { 
-	    modules::Vector message;
-	    RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
-	    ((RTT::InputPort<modules::Vector>*)read_port)->read(message);
-	    globalLog(RTT::Info, "Received new message on port %s of size",
-                (*it)->getName().c_str(), message.size());
-	    delete read_port;
+        modules::Vector message;
+        RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
+        ((RTT::InputPort<modules::Vector>*)read_port)->read(message);
+        log(RTT::Info) << "Received new message on port " << (*it)->getName() 
+                << " of size " << message.size() << RTT::endlog();
+        processMessage(message);
     }
 }
 
 ////////////////////////////////////////////////////////////////////
 //                           PROTECTED                            //
 ////////////////////////////////////////////////////////////////////
-void RootModule::fillModuleInfo()
+void RootModule::configureModule()
 {
     // Set default values. Random Name for the module.
     char buffer[sizeof(int)*8+1];
@@ -397,6 +301,82 @@ void RootModule::fillModuleInfo()
 
     // Set name of this task context.
     this->setName(conf.getName());
+
+    // Split and store module ID to envID, avahi type and name.
+    ModuleID::splitID(conf.getName(), &envID, &type, &name);
+}
+
+modules::Vector RootModule::generateMessage(const std::string& content, 
+        const std::set<std::string>& receivers)
+{
+    // Build fipa message.
+    fipa::acl::ACLMessage message = fipa::acl::ACLMessage(std::string("query-ref"));
+    message.setContent(std::string(content));
+
+    fipa::acl::AgentAID sender = fipa::acl::AgentAID(std::string(this->getName()));
+    message.setSender(sender);
+
+    for (std::set<std::string>::const_iterator it = receivers.begin(); it != receivers.end(); ++it) {
+        fipa::acl::AgentAID receiver = fipa::acl::AgentAID(std::string((*it)));
+        message.addReceiver(receiver);
+    }
+
+    // Generate bit message.
+    fipa::acl::ACLMessageOutputParser generator = fipa::acl::ACLMessageOutputParser();
+    generator.setMessage(message);
+
+    modules::Vector bytemessage;
+
+    bytemessage.push_back(generator.getBitMessage());
+
+    return bytemessage;	
+}
+
+void RootModule::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
+{
+    int n = 100;	
+	char buffer[512];
+	va_list arguments;
+
+	va_start(arguments, format);
+	n = vsnprintf(buffer, sizeof(buffer), format, arguments);
+	va_end(arguments);
+    std::string msg(buffer);
+
+    // Global log, sending message to all log-modules.
+    if(loggerSet.size()) // Are log-modules active?
+    {
+        // Build logging string with 'RTT::Logger/modname/msg'.
+        std::string log_msg = "x/" + this->getName() + "/" + msg;
+        log_msg[0] = static_cast<int>(log_type); // log_type 0-6
+
+        modules::Vector fipa_msg = generateMessage(log_msg, loggerSet);
+        sendMessageToMTA(fipa_msg);
+    }
+    
+    // Local log.
+    log(log_type) << msg << RTT::endlog();
+}
+
+void RootModule::startServiceDiscovery()
+{
+    if(serviceDiscovery == NULL)
+    {
+        serviceDiscovery = new dc::ServiceDiscovery();
+        // conf.stringlist.push_back("Type=Basis");
+        serviceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
+            &RootModule::serviceAdded));
+        serviceDiscovery->removedComponentConnect(sigc::mem_fun(*this, 
+            &RootModule::serviceRemoved));
+
+    }
+    try{
+        serviceDiscovery->start(conf);
+    } catch(exception& e) {
+        globalLog(RTT::Error, "%s", e.what());
+    }
+    globalLog(RTT::Info, "Started service '%s' with avahi-type '%s'",
+        this->getName().c_str(), conf.getType().c_str());
 }
 
 ////////////////////////////////CALLBACKS///////////////////////////
@@ -407,41 +387,49 @@ void RootModule::serviceAdded_(dfki::communication::ServiceEvent se)
     std::string name;
     ModuleID::splitID(se.getServiceDescription().getName(), &envID, &type, &name);
 
-    globalLog(RTT::Info, "type: %s", type.c_str());
-
-    // Connect to the first appropriate MTS (same environment id).  
-    if((ModuleID::getEnvID(this->getName()) == envID && type == "MTA") && mts == NULL)
+    // Connect to the first appropriate MTA (same environment id).  
+    if(mts == NULL && (type == "MTA" && envID == this->envID))
     {
-        mts = connectToRemoteModule(se);
+        mts = connectToModule(se);
         if(mts != NULL)
         {
             globalLog(RTT::Info, "Connected to a message transport service (MTS)");
-            //sendMessage(mts->getRemoteModuleName(), "Hello MTS, i am " + this->getName());
         }
     }
 
-    // TODO ?
-    // Connect to every LOG-Module.  
+    // Build up a list with all the logging module IDs.  
     if(type == "LOG")
     {
-        
-        RemoteConnection* rem_con_log = connectToRemoteModule(se);
-        if(rem_con_log != NULL)
-        {
-            // Creates a map with all logging modules connections.
-            remoteConnectionsMapLogger.insert(std::pair<std::string, RemoteConnection*>
-                (se.getServiceDescription().getName(), rem_con_log));
-        }
+        loggerSet.insert(se.getServiceDescription().getName());
     }
 }
 
 void RootModule::serviceRemoved_(dfki::communication::ServiceEvent se)
 {
-    disconnectFromService(se);
+    std::string envID;
+    std::string type;
+    std::string name;
+    ModuleID::splitID(se.getServiceDescription().getName(), &envID, &type, &name);
+
+    // If its the MTA of this module, remove shortcut.
+    if(type == "MTA" && envID == this->envID)
+    {
+        mts = NULL;
+        globalLog(RTT::Warning, "My MTA has been removed.");
+    } 
+
+    // If its a logging module, remove entry in the logger list.
+    if(type == "LOG")
+    {
+        loggerSet.erase(se.getServiceDescription().getName());
+    }
+
+    // Disconnect (will remove RemoteConnection object).
+    disconnectFromModule(se);
 }
 
 ////////////////////////////////METHODS////////////////////////////
-bool RootModule::createAndConnectPorts(std::string const & remote_name, 
+bool RootModule::rpcConnectToModule(std::string const & remote_name, 
         std::string const & remote_ior)
 {
     sem_wait(semaphoreConnect);

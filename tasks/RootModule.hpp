@@ -10,8 +10,16 @@
  *          German Research Center for Artificial Intelligence\n
  *          Project: Rimres
  *
- * \date    15.07.2010
+ * \date    23.07.2010
  *
+ * \version 0.2
+ *          Added the message parser and generator and the corresponding functions.
+ *          Renamed function for a better understanding.
+ *          Changing visibility of some methods.
+ *          Combining sendMessage-methods.
+ *          Building up a logger name list instead of a connection-list.
+ *          Cleaned connect and disconnect, functionality moved to serviceAdd/Removed.
+ *          
  * \version 0.1 
  *          Added global logger method.
  *
@@ -26,8 +34,10 @@
 #include <semaphore.h>
 #include <stdint.h>
 #include <stdarg.h>
+
 #include <list>
 #include <map>
+#include <set>
 #include <string>
 
 #include <rtt/Ports.hpp>
@@ -64,36 +74,19 @@ friend class RootModuleBase;
     ~RootModule();
 
     /**
-     * Sends the logging-message to all log-modules and store it
-     * locally.
-     * \param log-type RTT::Never, RTT::Fatal, RTT::Critical, RTT::Error, 
-     * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
-     */
-    void globalLog(RTT::LoggerLevel log_type, std::string message);
-
-    /**
-     * Converts the arguments into a string and calls the method 
-     * globalLog(RTT::LoggerLevel log_type, std::string message) to send 
-     * the message
-     * \param log-type RTT::Never, RTT::Fatal, RTT::Critical, RTT::Error, 
-     * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
-     */
-    void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
-
-    /**
      * Connects to the TaskContext 'rms'. The needed ports will be created
      * (on this and the remote module) and the output-ports will be connected 
      * with the input ports. 
      * @returns NULL if fails. 
      */
-    RemoteConnection* connectToRemoteModule(dfki::communication::ServiceEvent se);
+    RemoteConnection* connectToModule(dfki::communication::ServiceEvent se);
 
     /**
      * Deletes the connection to the module (ports and proxy).
      * If its the MTA of this module or a logging module, 
      * the shortcut is removed as well.
      */
-    void disconnectFromService(dfki::communication::ServiceEvent se);
+    void disconnectFromModule(dfki::communication::ServiceEvent se);
 
     RTT::NonPeriodicActivity* getNonPeriodicActivity();
 
@@ -116,20 +109,12 @@ friend class RootModuleBase;
      */
     bool sendMessageToMTA(Vector const& msg);    
 
-    /**
-     * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
-     * this module on the network (with 'ServiceEvent'), collect all 
-     * other available services (with 'afServiceBrowser') and defines callbacks.
-     * \TODO Should return and use bool: No SD, no module start.
-     */
-    void startServiceDiscovery();
-
  public: // HOOKS
     /** This hook is called by Orocos when the state machine transitions
      * from Stopped to PreOperational, requiring the call to configureHook()
      * before calling start() again.
      */
-    void cleanupHook();
+    void cleanupHook(){};
 
     /** This hook is called by Orocos when the state machine transitions
      * from PreOperational to Stopped. If it returns false, then the
@@ -164,7 +149,7 @@ friend class RootModuleBase;
     /** This hook is called by Orocos when the state machine transitions
      * from Running to Stopped after stop() has been called.
      */
-    void stopHook();
+    void stopHook(){};
 
     /** This hook is called by Orocos when the component is in the Running
      * state, at each activity step. Here, the activity gives the "ticks"
@@ -181,7 +166,8 @@ friend class RootModuleBase;
      * third case the component is stopped and resetError() needs to be
      * called before starting it again.
      *
-     * \TODO Set priodic activity within module.xml?
+     * Reads data and passes it to 'processMessage()'. Overwrite if you need 
+     * another behaviour.
      */
     void updateHook(std::vector<RTT::PortInterface*> const& updated_ports);
 
@@ -191,29 +177,60 @@ friend class RootModuleBase;
      * Extract the informations from 'configuration/module.xml' using the 'loadProperties()'
      * of Orocos. If the file or the properties can not be loaded, default values will
      * be used
-     * Additionally it resets the name of the TaskContext!
-     * If the file does not exists, it will be created.
+     * Additionally it resets the module-ID of the TaskContext and splits and stores the ID
+     * into envID, avahiType and nameAppendix. 
      * Uses \a configuration_file describing the path of the xml-conf-file.
      */
-    void fillModuleInfo();
+    void configureModule();
+
+    /**
+     * Generates a FIPA message with the passed content and receivers.
+     * Sender will be this module. 
+     */
+    modules::Vector generateMessage(const std::string& content, 
+            const std::set<std::string>& receivers);
+
+    /**
+     * Converts the arguments into a string and calls the method 
+     * globalLog(RTT::LoggerLevel log_type, std::string message) to send 
+     * the message
+     * \param log-type RTT::Never, RTT::Fatal, RTT::Critical, RTT::Error, 
+     * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
+     * \WARNING Safe against buffer overflows?
+     */
+    void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
+
+    /**
+     * The message, which is read within the updateHook(), is passed here.
+     * This function can be overwritten to process the incoming data.
+     */
+    virtual bool processMessage(const modules::Vector& message){};
+
+    /**
+     * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
+     * this module on the network (with 'ServiceEvent'), collect all 
+     * other available services (with 'afServiceBrowser') and defines callbacks.
+     * \TODO Should return and use bool: No SD, no module start.
+     */
+    void startServiceDiscovery();
 
  protected: // CALLBACKS
     /**
      * Callback function adds the newly discovered service if its unknown.
      */
-	void serviceAdded_(dfki::communication::ServiceEvent rms);
+	virtual void serviceAdded_(dfki::communication::ServiceEvent se);
 
     /**
      * Removes the service from the list if it disappears.
      */
-	void serviceRemoved_(dfki::communication::ServiceEvent rms);
+	virtual void serviceRemoved_(dfki::communication::ServiceEvent se);
 
  protected: // RPC-METHODS
     /**
-     * Used within 'connectToRemoteModule()' to create the ports on the
+     * Used within 'connectToModule()' to create the ports on the
      * remote module and to connect the remote output to the local input.
      */
-	bool createAndConnectPorts(std::string const & remote_name, 
+	bool rpcConnectToModule(std::string const & remote_name, 
             std::string const & remote_ior);
 
  protected:
@@ -227,9 +244,9 @@ friend class RootModuleBase;
     std::map<std::string, RemoteConnection*> remoteConnectionsMap;
 
     /**
-     * Contains all the connections to the logger modules.
+     * Contains the names of all active logger modules.
      */
-    std::map<std::string, RemoteConnection*> remoteConnectionsMapLogger;
+    std::set<std::string> loggerSet;
 
     /**
      * Direct pointer to the connected Message Transport Service.
@@ -245,16 +262,20 @@ friend class RootModuleBase;
 
 	std::string configuration_file;
 
+    std::string envID; /// Contains the environmental ID of this module ID.
+    std::string type;  /// Contains the avahi type of this module.
+    std::string name;  /// Contains the name of this module. Empty for MTAs.
+
  private: // CALLBACKS (private because they can not be overwritten, use protected ones)
     /**
      * Callback function adds the newly discovered service if its unknown.
      */
-	void serviceAdded(dfki::communication::ServiceEvent rms);
+	void serviceAdded(dfki::communication::ServiceEvent se);
 
     /**
      * Removes the service from the list if it disappears.
      */
-	void serviceRemoved(dfki::communication::ServiceEvent rms);
+	void serviceRemoved(dfki::communication::ServiceEvent se);
 
  private:
     sem_t* semaphoreConnect; // Used in createAndConnectPorts().
