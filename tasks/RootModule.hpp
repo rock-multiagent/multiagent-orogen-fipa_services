@@ -69,6 +69,15 @@ class RootModule : public RootModuleBase
 {
 friend class RootModuleBase;
  public:
+    /**
+     * Fills the service-discovery configuration struct with the module informations.
+     * Extract the informations from 'configuration/module.xml' using the 'loadProperties()'
+     * of Orocos. If the file or the properties can not be loaded, default values will
+     * be used
+     * Additionally it resets the module-ID of the TaskContext and splits and stores the ID
+     * into envID, avahiType and nameAppendix. 
+     * Uses \a configuration_file describing the path of the xml-conf-file.
+     */
     RootModule(std::string const& name = "modules::RootModule",
             std::string const& conf_file = "");
     ~RootModule();
@@ -90,6 +99,16 @@ friend class RootModuleBase;
 
     RTT::NonPeriodicActivity* getNonPeriodicActivity();
 
+    /**
+     * Returns the desired update frequency. Can be set within the 
+     * configuration file with the double 'periodic_activity' field. Default is 0.01.
+     * Is used by the child modules to set their update frequency.
+     * The update frequency of this root-module has to be set using the orocos-file.
+     */
+    inline double getPeriodicActivity() const
+    {
+        return periodicActivity;
+    }
     /**
      * Sends a Vector message to the connected MTS, which forwards it to the 
      * receiver. First, this service has to be connected to a MTS 
@@ -173,13 +192,7 @@ friend class RootModuleBase;
 
  protected:
     /**
-     * Fills the service-discovery configuration struct with the module informations.
-     * Extract the informations from 'configuration/module.xml' using the 'loadProperties()'
-     * of Orocos. If the file or the properties can not be loaded, default values will
-     * be used
-     * Additionally it resets the module-ID of the TaskContext and splits and stores the ID
-     * into envID, avahiType and nameAppendix. 
-     * Uses \a configuration_file describing the path of the xml-conf-file.
+     * Sets the logger level.
      */
     void configureModule();
 
@@ -265,6 +278,7 @@ friend class RootModuleBase;
     std::string envID; /// Contains the environmental ID of this module ID.
     std::string type;  /// Contains the avahi type of this module.
     std::string name;  /// Contains the name of this module. Empty for MTAs.
+    double periodicActivity; /// Used for the update frequency of the child modules.
 
  private: // CALLBACKS (private because they can not be overwritten, use protected ones)
     /**

@@ -33,11 +33,14 @@ RootModule::RootModule(std::string const& name,
         semaphoreConnect(NULL),
         conf(),
         remoteConnectionsMap(),
-        loggerSet()
+        loggerSet(),
+        periodicActivity(0.01)
 {
     conf = dc::ServiceConfiguration(name, "_rimres._tcp");
     semaphoreConnect = new sem_t();
     sem_init(semaphoreConnect, 1, 1); // Shared between processes and value one.
+    configureModule();
+    startServiceDiscovery();
     // See 'configureHook()'.
 }
 
@@ -140,8 +143,10 @@ RemoteConnection* RootModule::connectToModule(dc::ServiceEvent se)
     {
     */
 
-    // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, true=pull(problem here) false=push)
-    if(!rm->getOutputPort()->connectTo(*remoteinputport, RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
+    // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
+    // true=pull(problem here) false=push)
+    if(!rm->getOutputPort()->connectTo(*remoteinputport, 
+            RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
     {
         globalLog(RTT::Error, "Outputport '%s' cant be connected to the Input port of %s",
             rm->getOutputPortName().c_str(), se.getServiceDescription().getName().c_str());
@@ -228,8 +233,6 @@ bool RootModule::configureHook()
     {
         RTT::log().setLogLevel( RTT::Logger::Info );
     }
-    configureModule();
-    startServiceDiscovery();
     return true;
 }
 
@@ -246,6 +249,7 @@ bool RootModule::startHook()
 
 void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
 {
+    std::cout << "Now!" << std::endl;
     std::vector<RTT::PortInterface*>::const_iterator it;
     // Process message of all updated ports.
     for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
@@ -292,11 +296,13 @@ void RootModule::configureModule()
         RTT::Property<std::string>* p_type = pb->getProperty<std::string>("avahi_type");
         RTT::Property<int>* p_port = pb->getProperty<int>("port");
         RTT::Property<int>* p_ttl = pb->getProperty<int>("ttl");
+        RTT::Property<double>* p_activity = pb->getProperty<double>("periodic_activity");
 
         if(p_name) conf.setName(p_name->get());
         if(p_type) conf.setType(p_type->get());
         if(p_port) conf.setPort(p_port->get());
         if(p_ttl)  conf.setTTL(p_ttl->get());
+        if(p_activity) this->periodicActivity = p_activity->get();
     }
 
     // Set name of this task context.
