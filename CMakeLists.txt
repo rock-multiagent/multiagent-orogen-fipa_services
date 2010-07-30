@@ -21,9 +21,13 @@ link_directories(
 
 # using the scripts in cmake
 find_package(SIGC++ REQUIRED)
+set(Boost_LOCALFIRST TRUE)
+set(Boost_ADDITIONAL_VERSION 1.42 1.43)
+find_package(Boost REQUIRED)
 
 include_directories ( 
     ${SIGC++_INCLUDES}
+    ${Boost_INCLUDE_DIRS}
 )
 
 INCLUDE(modulesBase)

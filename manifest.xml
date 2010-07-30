@@ -9,6 +9,7 @@
   <depend package="framework/service-discovery" />
   <depend package="fipa/acl/message-parser" />
   <depend package="sigc" />
+  <depend package="boost" />
   <versioncontrol type="git" url="" />
   <export>
     <cpp cflags="" lflags="" />

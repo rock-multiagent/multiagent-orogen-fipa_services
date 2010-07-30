@@ -41,6 +41,7 @@
 #include <string>
 
 #include <rtt/Ports.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include <service-discovery/ServiceDiscovery.h>
 
@@ -114,7 +115,7 @@ friend class RootModuleBase;
      * receiver. First, this service has to be connected to a MTS 
      * and the receiver must be known by the MTS.
      */
-    bool sendMessage(std::string const& receiver, Vector const& msg);
+    bool sendMessage(std::string const& receiver,  boost::shared_ptr<modules::Vector> msg);
 
     /**
      * Sends a string message to the connected MTS, which forwards it to the 
@@ -126,7 +127,7 @@ friend class RootModuleBase;
     /**
      * Sends the passed fipa message if a MTA is available.
      */
-    bool sendMessageToMTA(Vector const& msg);    
+    bool sendMessageToMTA(boost::shared_ptr<modules::Vector>);    
 
  public: // HOOKS
     /** This hook is called by Orocos when the state machine transitions
@@ -200,7 +201,15 @@ friend class RootModuleBase;
      * Generates a FIPA message with the passed content and receivers.
      * Sender will be this module. 
      */
-    modules::Vector generateMessage(const std::string& content, 
+    boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+            const std::set<std::string>& receivers);
+
+    /**
+     * Generates a FIPA message with the passed content and receivers.
+     * Static because it is also needed within static member functions.
+     */
+    static boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+            const std::string sender,
             const std::set<std::string>& receivers);
 
     /**
@@ -217,13 +226,12 @@ friend class RootModuleBase;
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
      */
-    virtual bool processMessage(const modules::Vector& message){};
+    virtual bool processMessage(boost::shared_ptr<Vector> message){};
 
     /**
      * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
      * this module on the network (with 'ServiceEvent'), collect all 
      * other available services (with 'afServiceBrowser') and defines callbacks.
-     * \TODO Should return and use bool: No SD, no module start.
      */
     void startServiceDiscovery();
 
@@ -249,6 +257,9 @@ friend class RootModuleBase;
  protected:
     /** Contains the service(module) informations, used to configure 'ServiceDiscovery'. */
     dfki::communication::ServiceConfiguration conf;
+
+    /** Contains the configuration file properties. */
+    RTT::PropertyBag* propertyBag;
 
     /**
      * Contains all the connections (IO-ports and Control TaskProxy) 

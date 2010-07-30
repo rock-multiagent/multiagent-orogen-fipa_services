@@ -34,13 +34,12 @@ RootModule::RootModule(std::string const& name,
         conf(),
         remoteConnectionsMap(),
         loggerSet(),
-        periodicActivity(0.01)
+        periodicActivity(0.01),
+        propertyBag(NULL)
 {
     conf = dc::ServiceConfiguration(name, "_rimres._tcp");
     semaphoreConnect = new sem_t();
     sem_init(semaphoreConnect, 1, 1); // Shared between processes and value one.
-    configureModule();
-    startServiceDiscovery();
     // See 'configureHook()'.
 }
 
@@ -181,7 +180,7 @@ RTT::NonPeriodicActivity* RootModule::getNonPeriodicActivity()
     return dynamic_cast< RTT::NonPeriodicActivity* >(getActivity().get());
 }
 
-bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
+bool RootModule::sendMessage(std::string const& receiver, boost::shared_ptr<modules::Vector> msg)
 {
     map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.find(receiver);
     // Receiver known?
@@ -192,7 +191,7 @@ bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
         if(output_port) {
             // Convert message string to struct Vector (has to be done because '\0'
             // within the string interupts sending)
-            output_port->write(msg);
+            output_port->write(*msg);
             return true;
         } else {
             globalLog(RTT::Warning, "No output ports available for receiver %s, message could not be sent",
@@ -208,18 +207,19 @@ bool RootModule::sendMessage(std::string const& receiver, Vector const& msg)
 
 bool RootModule::sendMessage(std::string const& receiver, std::string const& msg)
 {
-    struct Vector msg_vec(msg);
+    // Creates the Vector containing the message string on the heap.
+    boost::shared_ptr<modules::Vector> msg_vec(new Vector(msg));
     return sendMessage(receiver, msg_vec);
 }
 
-bool RootModule::sendMessageToMTA(Vector const& msg)
+bool RootModule::sendMessageToMTA(boost::shared_ptr<modules::Vector> msg)
 {
     if(mts)
     {
         RTT::OutputPort<Vector>* output_port = mts->getOutputPort();
         if(output_port) 
         {
-            output_port->write(msg);
+            output_port->write(*msg);
             return true;
         }
     }
@@ -233,6 +233,9 @@ bool RootModule::configureHook()
     {
         RTT::log().setLogLevel( RTT::Logger::Info );
     }
+    // SD has to be started here, constuctor does not work.
+    configureModule();
+    startServiceDiscovery();
     return true;
 }
 
@@ -249,16 +252,15 @@ bool RootModule::startHook()
 
 void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
 {
-    std::cout << "Now!" << std::endl;
     std::vector<RTT::PortInterface*>::const_iterator it;
     // Process message of all updated ports.
     for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
     { 
-        modules::Vector message;
+        boost::shared_ptr<Vector> message(new Vector());
         RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
-        ((RTT::InputPort<modules::Vector>*)read_port)->read(message);
+        ((RTT::InputPort<modules::Vector>*)read_port)->read(*message);
         log(RTT::Info) << "Received new message on port " << (*it)->getName() 
-                << " of size " << message.size() << RTT::endlog();
+                << " of size " << message->size() << RTT::endlog();
         processMessage(message);
     }
 }
@@ -290,7 +292,8 @@ void RootModule::configureModule()
         globalLog(RTT::Warning, "Could not load properties %s, default values are used",
             module_path.c_str());
     } else {
-        RTT::PropertyBag* pb = this->properties();
+        propertyBag = this->properties(); // For external usage.
+        RTT::PropertyBag* pb = propertyBag;
         // Returns NULL if the property could not be loaded. 
         RTT::Property<std::string>* p_name = pb->getProperty<std::string>("name");
         RTT::Property<std::string>* p_type = pb->getProperty<std::string>("avahi_type");
@@ -312,15 +315,22 @@ void RootModule::configureModule()
     ModuleID::splitID(conf.getName(), &envID, &type, &name);
 }
 
-modules::Vector RootModule::generateMessage(const std::string& content, 
+boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string& content, 
+        const std::set<std::string>& receivers)
+{
+    return generateMessage(content, std::string(this->getName()), receivers);	
+}
+
+boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string& content, 
+        const std::string sender,
         const std::set<std::string>& receivers)
 {
     // Build fipa message.
     fipa::acl::ACLMessage message = fipa::acl::ACLMessage(std::string("query-ref"));
     message.setContent(std::string(content));
 
-    fipa::acl::AgentAID sender = fipa::acl::AgentAID(std::string(this->getName()));
-    message.setSender(sender);
+    fipa::acl::AgentAID fipa_sender = fipa::acl::AgentAID(sender);
+    message.setSender(fipa_sender);
 
     for (std::set<std::string>::const_iterator it = receivers.begin(); it != receivers.end(); ++it) {
         fipa::acl::AgentAID receiver = fipa::acl::AgentAID(std::string((*it)));
@@ -331,9 +341,9 @@ modules::Vector RootModule::generateMessage(const std::string& content,
     fipa::acl::ACLMessageOutputParser generator = fipa::acl::ACLMessageOutputParser();
     generator.setMessage(message);
 
-    modules::Vector bytemessage;
+    boost::shared_ptr<modules::Vector> bytemessage(new modules::Vector());
 
-    bytemessage.push_back(generator.getBitMessage());
+    bytemessage->push_back(generator.getBitMessage());
 
     return bytemessage;	
 }
@@ -356,7 +366,7 @@ void RootModule::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
         std::string log_msg = "x/" + this->getName() + "/" + msg;
         log_msg[0] = static_cast<int>(log_type); // log_type 0-6
 
-        modules::Vector fipa_msg = generateMessage(log_msg, loggerSet);
+        boost::shared_ptr<modules::Vector> fipa_msg = generateMessage(log_msg, loggerSet);
         sendMessageToMTA(fipa_msg);
     }
     
