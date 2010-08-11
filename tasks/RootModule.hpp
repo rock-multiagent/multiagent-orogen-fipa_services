@@ -57,6 +57,10 @@ namespace RTT
 class NonPeriodicActivity;
 } // namespace RTT
 
+namespace orogen_transports {
+    class TypelibMarshallerBase;
+}
+
 namespace modules
 {
 class RemoteConnection;
@@ -115,7 +119,8 @@ friend class RootModuleBase;
      * receiver. First, this service has to be connected to a MTS 
      * and the receiver must be known by the MTS.
      */
-    bool sendMessage(std::string const& receiver,  boost::shared_ptr<modules::Vector> msg);
+//    bool sendMessage(std::string const& receiver,  boost::shared_ptr<modules::Vector> msg);
+    bool sendMessage(std::string const& receiver,  modules::Vector msg);
 
     /**
      * Sends a string message to the connected MTS, which forwards it to the 
@@ -127,7 +132,8 @@ friend class RootModuleBase;
     /**
      * Sends the passed fipa message if a MTA is available.
      */
-    bool sendMessageToMTA(boost::shared_ptr<modules::Vector>);    
+//    bool sendMessageToMTA(boost::shared_ptr<modules::Vector>);
+    bool sendMessageToMTA(modules::Vector);        
 
  public: // HOOKS
     /** This hook is called by Orocos when the state machine transitions
@@ -201,16 +207,28 @@ friend class RootModuleBase;
      * Generates a FIPA message with the passed content and receivers.
      * Sender will be this module. 
      */
-    boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+//    boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+//            const std::set<std::string>& receivers);
+    modules::Vector generateMessage(const std::string& content, 
             const std::set<std::string>& receivers);
+
 
     /**
      * Generates a FIPA message with the passed content and receivers.
      * Static because it is also needed within static member functions.
      */
-    static boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+//    static boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+//            const std::string sender,
+//            const std::set<std::string>& receivers);
+    static modules::Vector generateMessage(const std::string& content, 
             const std::string sender,
             const std::set<std::string>& receivers);
+
+
+    /**
+     * TODO document
+     */
+    size_t getPayloadSize();
 
     /**
      * Converts the arguments into a string and calls the method 
@@ -220,13 +238,18 @@ friend class RootModuleBase;
      * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
      * \WARNING Safe against buffer overflows?
      */
-    void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
+    virtual void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
 
     /**
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
      */
-    virtual bool processMessage(boost::shared_ptr<Vector> message){};
+    virtual bool processMessage(Vector message){};
+
+    /**
+     * This method will be overwritten in the logger module.
+     */
+    virtual bool report(RTT::InputPortInterface*){};
 
     /**
      * The class 'ServiceDiscovery' creates the avahi client and is used to publish 
@@ -283,6 +306,8 @@ friend class RootModuleBase;
      * and define callbacks (service removed and added).
      */
     dfki::communication::ServiceDiscovery* serviceDiscovery;
+
+    orogen_transports::TypelibMarshallerBase* transport;
 
 	std::string configuration_file;
 
