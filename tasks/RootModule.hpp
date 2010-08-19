@@ -224,7 +224,7 @@ friend class RootModuleBase;
             const std::string sender,
             const std::set<std::string>& receivers);
 
-    static modules::Vector generateMessage(const std::string& content, 
+    static fipa::BitefficientMessage generateMessage(const std::string& content, 
         const std::string sender,
         const std::set<std::string>& receivers,
         const std::string& conversation_id);
