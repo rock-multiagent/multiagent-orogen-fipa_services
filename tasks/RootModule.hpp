@@ -115,12 +115,12 @@ friend class RootModuleBase;
         return periodicActivity;
     }
     /**
-     * Sends a Vector message to the connected MTS, which forwards it to the 
+     * Sends a fipa::BitefficientMessage message to the connected MTS, which forwards it to the 
      * receiver. First, this service has to be connected to a MTS 
      * and the receiver must be known by the MTS.
      */
-//    bool sendMessage(std::string const& receiver,  boost::shared_ptr<modules::Vector> msg);
-    bool sendMessage(std::string const& receiver,  modules::Vector msg);
+//    bool sendMessage(std::string const& receiver,  boost::shared_ptr<fipa::BitefficientMessage> msg);
+    bool sendMessage(std::string const& receiver,  fipa::BitefficientMessage msg);
 
     /**
      * Sends a string message to the connected MTS, which forwards it to the 
@@ -132,8 +132,8 @@ friend class RootModuleBase;
     /**
      * Sends the passed fipa message if a MTA is available.
      */
-//    bool sendMessageToMTA(boost::shared_ptr<modules::Vector>);
-    bool sendMessageToMTA(modules::Vector);        
+//    bool sendMessageToMTA(boost::shared_ptr<fipa::BitefficientMessage>);
+    bool sendMessageToMTA(fipa::BitefficientMessage);        
 
  public: // HOOKS
     /** This hook is called by Orocos when the state machine transitions
@@ -207,9 +207,9 @@ friend class RootModuleBase;
      * Generates a FIPA message with the passed content and receivers.
      * Sender will be this module. 
      */
-//    boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+//    boost::shared_ptr<fipa::BitefficientMessage> generateMessage(const std::string& content, 
 //            const std::set<std::string>& receivers);
-    modules::Vector generateMessage(const std::string& content, 
+    fipa::BitefficientMessage generateMessage(const std::string& content, 
             const std::set<std::string>& receivers);
 
 
@@ -217,10 +217,10 @@ friend class RootModuleBase;
      * Generates a FIPA message with the passed content and receivers.
      * Static because it is also needed within static member functions.
      */
-//    static boost::shared_ptr<modules::Vector> generateMessage(const std::string& content, 
+//    static boost::shared_ptr<fipa::BitefficientMessage> generateMessage(const std::string& content, 
 //            const std::string sender,
 //            const std::set<std::string>& receivers);
-    static modules::Vector generateMessage(const std::string& content, 
+    static fipa::BitefficientMessage generateMessage(const std::string& content, 
             const std::string sender,
             const std::set<std::string>& receivers);
 
@@ -244,7 +244,7 @@ friend class RootModuleBase;
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
      */
-    virtual bool processMessage(Vector message){};
+    virtual bool processMessage(fipa::BitefficientMessage message){};
 
     /**
      * This method will be overwritten in the logger module.

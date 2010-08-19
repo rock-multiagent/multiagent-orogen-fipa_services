@@ -184,17 +184,17 @@ RTT::NonPeriodicActivity* RootModule::getNonPeriodicActivity()
     return dynamic_cast< RTT::NonPeriodicActivity* >(getActivity().get());
 }
 
-//bool RootModule::sendMessage(std::string const& receiver, boost::shared_ptr<modules::Vector> msg)
-bool RootModule::sendMessage(std::string const& receiver, modules::Vector msg)
+//bool RootModule::sendMessage(std::string const& receiver, boost::shared_ptr<fipa::BitefficientMessage> msg)
+bool RootModule::sendMessage(std::string const& receiver, fipa::BitefficientMessage msg)
 {
     map<std::string, RemoteConnection*>::iterator it = remoteConnectionsMap.find(receiver);
     // Receiver known?
     if(it != remoteConnectionsMap.end())
     {
         // Output ports available?
-        RTT::OutputPort<Vector>* output_port = it->second->getOutputPort();
+        RTT::OutputPort<fipa::BitefficientMessage>* output_port = it->second->getOutputPort();
         if(output_port) {
-            // Convert message string to struct Vector (has to be done because '\0'
+            // Convert message string to struct fipa::BitefficientMessage (has to be done because '\0'
             // within the string interupts sending)
             output_port->write(msg);
             return true;
@@ -212,18 +212,18 @@ bool RootModule::sendMessage(std::string const& receiver, modules::Vector msg)
 
 bool RootModule::sendMessage(std::string const& receiver, std::string const& msg)
 {
-    // Creates the Vector containing the message string on the heap.
-//    boost::shared_ptr<modules::Vector> msg_vec(new Vector(msg));
-    modules::Vector msg_vec;
+    // Creates the fipa::BitefficientMessage containing the message string on the heap.
+//    boost::shared_ptr<fipa::BitefficientMessage> msg_vec(new fipa::BitefficientMessage(msg));
+    fipa::BitefficientMessage msg_vec;
     return sendMessage(receiver, msg_vec);
 }
 
-//bool RootModule::sendMessageToMTA(boost::shared_ptr<modules::Vector> msg)
-bool RootModule::sendMessageToMTA(modules::Vector msg)
+//bool RootModule::sendMessageToMTA(boost::shared_ptr<fipa::BitefficientMessage> msg)
+bool RootModule::sendMessageToMTA(fipa::BitefficientMessage msg)
 {
     if(mts)
     {
-        RTT::OutputPort<Vector>* output_port = mts->getOutputPort();
+        RTT::OutputPort<fipa::BitefficientMessage>* output_port = mts->getOutputPort();
         if(output_port) 
         {
             output_port->write(msg);
@@ -263,10 +263,10 @@ void RootModule::updateHook(std::vector<RTT::PortInterface*> const& updated_port
     // Process message of all updated ports.
     for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
     { 
-//        boost::shared_ptr<Vector> message(new Vector());
-        Vector message;
+//        boost::shared_ptr<fipa::BitefficientMessage> message(new fipa::BitefficientMessage());
+        fipa::BitefficientMessage message;
         RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
-        ((RTT::InputPort<modules::Vector>*)read_port)->read(message);
+        ((RTT::InputPort<fipa::BitefficientMessage>*)read_port)->read(message);
         globalLog(RTT::Info, "Received new message on port %s of size %d", (*it)->getName().c_str(),
                 message.size());
         processMessage(message);
@@ -322,7 +322,7 @@ void RootModule::configureModule()
     // Split and store module ID to envID, avahi type and name.
     ModuleID::splitID(conf.getName(), &envID, &type, &name);
 
-    // Getting information for the type of the ports (modules::Vector)
+    // Getting information for the type of the ports (fipa::BitefficientMessage)
     RTT::TypeInfo const* type = _inputPortMTS.getTypeInfo();
     transport = dynamic_cast<orogen_transports::TypelibMarshallerBase*>(
         type->getProtocol(orogen_transports::TYPELIB_MARSHALLER_ID));
@@ -334,13 +334,13 @@ void RootModule::configureModule()
     }    
 }
 
-/*boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string& content, 
+/*boost::shared_ptr<fipa::BitefficientMessage> RootModule::generateMessage(const std::string& content, 
         const std::set<std::string>& receivers)
 {
     return generateMessage(content, std::string(this->getName()), receivers);	
 }
 
-boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string& content, 
+boost::shared_ptr<fipa::BitefficientMessage> RootModule::generateMessage(const std::string& content, 
         const std::string sender,
         const std::set<std::string>& receivers)
 {
@@ -360,7 +360,7 @@ boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string
     fipa::acl::ACLMessageOutputParser generator = fipa::acl::ACLMessageOutputParser();
     generator.setMessage(message);
 
-    boost::shared_ptr<modules::Vector> bytemessage(new modules::Vector());
+    boost::shared_ptr<fipa::BitefficientMessage> bytemessage(new fipa::BitefficientMessage());
 
     bytemessage->push_back(generator.getBitMessage());
 
@@ -368,13 +368,13 @@ boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string
 }
 */
 
-modules::Vector RootModule::generateMessage(const std::string& content, 
+fipa::BitefficientMessage RootModule::generateMessage(const std::string& content, 
         const std::set<std::string>& receivers)
 {
     return generateMessage(content, std::string(this->getName()), receivers);	
 }
 
-modules::Vector RootModule::generateMessage(const std::string& content, 
+fipa::BitefficientMessage RootModule::generateMessage(const std::string& content, 
         const std::string sender,
         const std::set<std::string>& receivers)
 {
@@ -394,7 +394,7 @@ modules::Vector RootModule::generateMessage(const std::string& content,
     fipa::acl::ACLMessageOutputParser generator = fipa::acl::ACLMessageOutputParser();
     generator.setMessage(message);
 
-    modules::Vector bytemessage;
+    fipa::BitefficientMessage bytemessage;
 
     bytemessage.push_back(generator.getBitMessage());
 
@@ -424,8 +424,8 @@ void RootModule::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
         std::string log_msg = "x/" + this->getName() + "/" + msg;
         log_msg[0] = static_cast<int>(log_type); // log_type 0-6
 
-//        boost::shared_ptr<modules::Vector> fipa_msg = generateMessage(log_msg, loggerSet);
-        modules::Vector fipa_msg = generateMessage(log_msg, loggerSet);
+//        boost::shared_ptr<fipa::BitefficientMessage> fipa_msg = generateMessage(log_msg, loggerSet);
+        fipa::BitefficientMessage fipa_msg = generateMessage(log_msg, loggerSet);
 
         sendMessageToMTA(fipa_msg);
     }

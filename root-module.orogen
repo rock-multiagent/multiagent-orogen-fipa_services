@@ -2,14 +2,14 @@ name 'modules'
 version '0.1'
 # Find documentation at http://doudou.github.com/orogen/
 
-import_types_from "tasks/root_module_data.h"
+import_types_from "tasks/fipa_msg_object.h"
 
 task_context "RootModule" do
     needs_configuration
 
-    output_port('outputPortMTS', '/modules/Vector').
+    output_port('outputPortMTS', '/fipa/BitefficientMessage').
         doc('Direct output port to the mts (message-transport-service).')
-    input_port('inputPortMTS', '/modules/Vector').
+    input_port('inputPortMTS', '/fipa/BitefficientMessage').
         doc('Direct input port for the messages of the mts (message-transport-service).')
 
     #output_port('logger', 'std::string').

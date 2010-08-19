@@ -10,7 +10,7 @@
 
 #include <service-discovery/ServiceDiscovery.h>
 
-#include "root_module_data.h"
+#include "fipa_msg_object.h"
 
 // A macro to disallow the copy constructor and operator= functions
 // This should be used in the private: declarations for a class
@@ -67,12 +67,12 @@ class RemoteConnection
         return localModuleName;
     }
 
-    inline RTT::InputPort<Vector>* getInputPort() const
+    inline RTT::InputPort<fipa::BitefficientMessage>* getInputPort() const
     {
         return inputPort;
     }
 
-    inline RTT::OutputPort<Vector>* getOutputPort() const
+    inline RTT::OutputPort<fipa::BitefficientMessage>* getOutputPort() const
     {
         return outputPort;
     }
@@ -105,8 +105,8 @@ class RemoteConnection
 
     RTT::TaskContext* taskContext;
     RTT::Corba::ControlTaskProxy* controlTaskProxy;
-    RTT::InputPort<Vector>* inputPort;
-    RTT::OutputPort<Vector>* outputPort; 
+    RTT::InputPort<fipa::BitefficientMessage>* inputPort;
+    RTT::OutputPort<fipa::BitefficientMessage>* outputPort; 
     bool isInitialized;
 
     //TODO: Add enum to which kind of module this

@@ -79,8 +79,8 @@ bool RemoteConnection::initialize()
         return true;
     }
     // Create Ports.
-    inputPort = new RTT::InputPort<Vector>(inputPortName);
-    outputPort = new RTT::OutputPort<Vector>(outputPortName);
+    inputPort = new RTT::InputPort<fipa::BitefficientMessage>(inputPortName);
+    outputPort = new RTT::OutputPort<fipa::BitefficientMessage>(outputPortName);
 
     std::string info = "Input port from '" + remoteModuleName + "' to '" + localModuleName + "'";
     if(taskContext->ports()->addEventPort(inputPort, info)){

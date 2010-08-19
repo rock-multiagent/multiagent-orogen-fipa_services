@@ -8,64 +8,65 @@
 #include <vector>
 #endif
 
-namespace modules {
+namespace fipa {
 
-struct Vector {
+struct BitefficientMessage {
 #ifndef __orogen
  public:
-    Vector()
+    BitefficientMessage()
     {
     }
 
-    Vector(std::string msg)
+    BitefficientMessage(std::string msg)
     {
         push_back(msg);
     }
 
-    ~Vector()
+    ~BitefficientMessage()
     {
-        vec.clear();
+        data.clear();
     }
 
     inline void clear()
     {
-        vec.clear();
+        data.clear();
     }
 
     inline std::vector<uint8_t> getVector() const 
     {
-        return this->vec;
+        return this->data;
     }
 
     inline void push_back(uint8_t element)
     { 
-        this->vec.push_back(element);
+        this->data.push_back(element);
     }
 
     inline void push_back(std::string msg)
     {
         for(int i=0; i<msg.size(); i++)
         {
-            this->vec.push_back(msg[i]);
+            this->data.push_back(msg[i]);
         } 
     }
 
     inline int size() const 
     {
-        return this->vec.size(); 
+        return this->data.size(); 
     }
 
     inline std::string toString() const 
     {
 	    std::string str = "";
-	    for (std::vector<uint8_t>::const_iterator it = vec.begin(); it != vec.end(); it++)
+	    for (std::vector<uint8_t>::const_iterator it = data.begin(); it != data.end(); it++)
 		    str += (*it);
 	    return str;
     }
 
     #endif
-    std::vector<uint8_t> vec;
+    std::vector<uint8_t> data;
 };
+
 } // namespace modules
 #endif
 
