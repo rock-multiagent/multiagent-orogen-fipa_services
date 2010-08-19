@@ -401,6 +401,36 @@ fipa::BitefficientMessage RootModule::generateMessage(const std::string& content
     return bytemessage;	
 }
 
+modules::Vector RootModule::generateMessage(const std::string& content, 
+        const std::string sender,
+        const std::set<std::string>& receivers,
+        const std::string& conversation_id)
+{
+    // Build fipa message.
+    fipa::acl::ACLMessage message = fipa::acl::ACLMessage(std::string("query-ref"));
+    message.setContent(std::string(content));
+
+    fipa::acl::AgentAID fipa_sender = fipa::acl::AgentAID(sender);
+    message.setSender(fipa_sender);
+
+    message.setConversationID(conversation_id);
+
+    for (std::set<std::string>::const_iterator it = receivers.begin(); it != receivers.end(); ++it) {
+        fipa::acl::AgentAID receiver = fipa::acl::AgentAID(std::string((*it)));
+        message.addReceiver(receiver);
+    }
+
+    // Generate bit message.
+    fipa::acl::ACLMessageOutputParser generator = fipa::acl::ACLMessageOutputParser();
+    generator.setMessage(message);
+
+    modules::Vector bytemessage;
+
+    bytemessage.push_back(generator.getBitMessage());
+
+    return bytemessage;	
+}
+
 size_t RootModule::getPayloadSize() 
 {
      return 1;
