@@ -348,11 +348,11 @@ boost::shared_ptr<modules::Vector> RootModule::generateMessage(const std::string
     fipa::acl::ACLMessage message = fipa::acl::ACLMessage(std::string("query-ref"));
     message.setContent(std::string(content));
 
-    fipa::acl::AgentAID fipa_sender = fipa::acl::AgentAID(sender);
+    fipa::acl::AgentID fipa_sender = fipa::acl::AgentID(sender);
     message.setSender(fipa_sender);
 
     for (std::set<std::string>::const_iterator it = receivers.begin(); it != receivers.end(); ++it) {
-        fipa::acl::AgentAID receiver = fipa::acl::AgentAID(std::string((*it)));
+        fipa::acl::AgentID receiver = fipa::acl::AgentID(std::string((*it)));
         message.addReceiver(receiver);
     }
 
@@ -382,11 +382,11 @@ modules::Vector RootModule::generateMessage(const std::string& content,
     fipa::acl::ACLMessage message = fipa::acl::ACLMessage(std::string("query-ref"));
     message.setContent(std::string(content));
 
-    fipa::acl::AgentAID fipa_sender = fipa::acl::AgentAID(sender);
+    fipa::acl::AgentID fipa_sender = fipa::acl::AgentID(sender);
     message.setSender(fipa_sender);
 
     for (std::set<std::string>::const_iterator it = receivers.begin(); it != receivers.end(); ++it) {
-        fipa::acl::AgentAID receiver = fipa::acl::AgentAID(std::string((*it)));
+        fipa::acl::AgentID receiver = fipa::acl::AgentID(std::string((*it)));
         message.addReceiver(receiver);
     }
 
