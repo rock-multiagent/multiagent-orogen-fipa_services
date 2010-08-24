@@ -7,7 +7,6 @@
   <logo>http://</logo>
   <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
   <depend package="framework/service-discovery" />
-  <depend package="fipa/acl/message-parser" />
   <depend package="sigc" />
   <depend package="boost" />
   <versioncontrol type="git" url="" />
