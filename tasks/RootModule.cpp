@@ -71,7 +71,6 @@ RootModule::~RootModule()
     // See 'cleanupHook()'.
 }
 
-//todo: add the rm to the map at the end, delete rm if connection fails.
 RemoteConnection* RootModule::connectToModule(dc::ServiceEvent se)
 {
     // Do nothing if the connection have already be established.
@@ -454,7 +453,7 @@ void RootModule::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
         std::string log_msg = "x/" + this->getName() + "/" + msg;
         log_msg[0] = static_cast<int>(log_type); // log_type 0-6
 
-//        boost::shared_ptr<fipa::BitefficientMessage> fipa_msg = generateMessage(log_msg, loggerSet);
+        // boost::shared_ptr<fipa::BitefficientMessage> fipa_msg = generateMessage(log_msg, loggerSet);
         fipa::BitefficientMessage fipa_msg = generateMessage(log_msg, loggerSet);
 
         sendMessageToMTA(fipa_msg);

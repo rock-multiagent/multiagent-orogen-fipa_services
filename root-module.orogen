@@ -1,19 +1,21 @@
-name 'modules'
+name 'root'
+
 version '0.1'
 # Find documentation at http://doudou.github.com/orogen/
+version '0.2'
+# Switched to orogen for all modules. Because of that the
+# namespace name of every module has to be unique. So, the namespace
+# name will describe the module, the class name will always be 'Module'.
 
 import_types_from "tasks/fipa_msg_object.h"
 
-task_context "RootModule" do
+task_context "Module" do
     needs_configuration
 
     output_port('outputPortMTS', '/fipa/BitefficientMessage').
         doc('Direct output port to the mts (message-transport-service).')
     input_port('inputPortMTS', '/fipa/BitefficientMessage').
         doc('Direct input port for the messages of the mts (message-transport-service).')
-
-    #output_port('logger', 'std::string').
-	#doc('A port to handle all log messages by sending them to a centralized logger')
 
     method(:rpcConnectToModule).
 	    argument('remote_name', 'std::string').
@@ -24,7 +26,7 @@ end
 
 deployment "root_module" do
     add_default_logger
-    mod = task("root_module", "modules::RootModule").
+    mod = task("root_module", "root::Module").
         priority('10').
         periodic('0.001').
         start
