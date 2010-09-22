@@ -33,7 +33,8 @@ class ConnectionInterface
     virtual std::string getReceiverName();
     virtual std::string getSenderName();
     virtual bool initialize(){};
-    virtual bool sendData(std::vector<uint8_t> data);
+    virtual bool readData(std::string* data);
+    virtual bool sendData(std::string data);
 
  private:
     DISALLOW_COPY_AND_ASSIGN(ConnectionInterface);

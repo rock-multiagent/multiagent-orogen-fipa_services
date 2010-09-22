@@ -17,12 +17,10 @@ namespace Corba {
 
 namespace root
 {
-typedef <bool(std::string const &, std::string const &)>
-
-class ConnectionCorba : public ConnectionInterface
+class CorbaConnection : public ConnectionInterface
 {
  public:
-    ConnectionCorba(RTT::TaskContext* sender, std::string receiver, 
+    CorbaConnection(RTT::TaskContext* sender, std::string receiver, 
             str::string receiver_ior) : 
             ConnectionInterface(),
             taskContextSender(sender),
@@ -37,16 +35,86 @@ class ConnectionCorba : public ConnectionInterface
         outputPortName = senderName + "->" + receiverName + "_port";
     }
                 
-    ~ConnectionCorba()
+    ~CorbaConnection()
     {
         disconnect();
     }
-    bool connect(){}; //virtual
+
+    /**
+     * Creates and connects the ports of the sender and receiver module. 
+     */
+    bool connect() //virtual
+    {
+        if(!createPorts())
+        {
+            log(RTT::Info) << "Sender ports could not be created." << RTT::endlog();
+            return false;
+        }
+
+        if(!createProxy())
+        {
+            log(RTT::Info) << "Sender proxy could not be created." << RTT::endlog();
+            return false;
+        }
+
+        if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const &)>
+                ("rpcCreateConnectPorts"))
+        {
+            log(RTT::Info) << "Receiver ports could not be created/connected." << 
+                    RTT::endlog();
+            return false;
+        }
+
+        if(!connectPorts())
+        {
+            log(RTT::Info) << "Sender ports could not be connected." << RTT::endlog();
+            return false;
+        }
+        log(RTT::Info) << "Modules " << senderName << " and " << receiverName << 
+                "connected." << RTT::endlog()
+    }
+
     bool disconnect(){}; //virtual
-    std::string getSenderName(){}; //virtual
-    std::string getReceiverName(){}; //virtual
-    bool initialize(){}; //virtual
-    bool sendData(std::vector<uint8_t> data){}; //virtual
+
+    std::string getSenderName() //virtual
+    {
+        return senderName;
+    }
+
+    std::string getReceiverName() //virtual
+    {
+        return receiverName;
+    }
+
+    bool readData(std::string* data) //virtual
+    {
+        fipa::BitefficientMessage msg;
+        bool ret = inputPort->read(msg);
+        if(ret)
+        {
+            *data = msg.toString();
+        }
+        return ret;
+    }
+
+    /**
+     * Sends the data to the receiver, if the connection has been established.
+     * \warning The return value will be true even if the data does not reach 
+     * the receiver.
+     */
+    bool sendData(std::string data) //virtual
+    {
+        if(!connected)
+        {
+            log(RTT::Info) << "Data can not be sent, no connection available. " << 
+                RTT::endlog();
+            return false;
+        }
+        // string to char-vector conversion to handle zeros within the string. 
+        fipa::BitefficientMessage msg(data);
+        outputPort->write(msg);
+        return true;
+    }
 
  private:
     ConnectionCorba();
@@ -58,32 +126,16 @@ class ConnectionCorba : public ConnectionInterface
         if(portsCreated)
             return false;
 
-        std::string info_input = "Input port from '"+receiverName+"' to '"+senderName+"'";
-        std::string info_output = "Input port from '"+senderName+"' to '"+receiverName+"'";
-        std::string create_input = "Create InputPort '" + inputPortName + "'";
-        std::string create_output = "Create OutputPort '" + outputPortName + "'";
-        std::string event_input = "Port '" + inputPortName + "' connected to an event handler.";
-
         inputPort = new RTT::InputPort<fipa::BitefficientMessage>(inputPortName);
         outputPort = new RTT::OutputPort<fipa::BitefficientMessage>(outputPortName);
 
-        if(taskContext->ports()->addEventPort(inputPort, info_input)) {
-            log(RTT::Info) << create_input << RTT::endlog();
-            if (taskContext->connectPortToEvent(inputPort))
-                log(RTT::Info) << event_input << RTT::endlog();
-            else
-                log(RTT::Error) << event_input << RTT::endlog();
-        } else {
-            log(RTT::Error) << create_input << RTT::endlog();
+        if(!taskContext->ports()->addEventPort(inputPort, info_input) ||
+            !taskContext->connectPortToEvent(inputPort)) 
             return false;
-        }
 
-        if(taskContext->ports()->addPort(outputPort, info_output)) {
-            log(RTT::Info) << create_output << RTT::endlog();
-        } else {
-            log(RTT::Error) << create_output << RTT::endlog();
+        if(!taskContext->ports()->addPort(outputPort, info_output))
             return false;
-        }
+     
         portsCreated = true;
         return true;
     }
@@ -100,23 +152,17 @@ class ConnectionCorba : public ConnectionInterface
             taskContextSender->removePeer(receiverIOR);
             delete controlTaskProxy;
             controlTaskProxy = NULL;
-            log(RTT::Info) << "Delete ControlTaskProxy to '" <<  
-                    rceiverName << "'" << RTT::endlog();
         }
+
         // Create Control Task Proxy.
         RTT::Corba::ControlTaskProxy::InitOrb(0, 0);
         controlTaskProxy = RTT::Corba::ControlTaskProxy::
                 Create(receiverIOR, receiverIOR.substr(0,3) == "IOR");
+
         // Creating a one-directional connection from task_context to the peer. 
-        if(taskContextSender->addPeer(controlTaskProxy))
-            log(RTT::Info) << "Create ControlTaskProxy to '" <<  
-                    rceiverName << "'" << RTT::endlog();
-        else 
-        {
-             log(RTT::Error) << "Can not create ControlTaskProxy to '" <<  
-                    receiverName << "'" << RTT::endlog();
+        if(!taskContextSender->addPeer(controlTaskProxy))
             return false;
-        }
+        
         proxyCreated = true;
         return true;
     }
@@ -141,25 +187,18 @@ class ConnectionCorba : public ConnectionInterface
 
         // Receiver function is ready?
         if(!create_receiver_ports.ready())
-        {
-            globalLog(RTT::Error, "Connection on the remote module '%s' could not be created", 
-                    se.getServiceDescription().getName().c_str());
             return false;
-        }
+     
         // Create receiver connection.
         if(!create_receiver_ports(senderName, senderIOR))
-        {
-            globalLog(RTT::Error, "Connection on the remote module '%s' could not be created", 
-                    se.getServiceDescription().getName().c_str());
             return false;
-        }
+        
         // Refresh control task proxy to get to know the new receiver ports.
-        if(createProxy()) {
-            receiverConnected = true;
-            return true;
-        } else {
+        if(!createProxy())
             return false;
-        }
+
+        receiverConnected = true;
+        return true;
     }
 
     /**
@@ -168,6 +207,7 @@ class ConnectionCorba : public ConnectionInterface
      */
     bool connectPorts()
     {
+        connected = false;
         if(!portsCreated || !proxyCreated || !receiverConnected)
             return false;
 
@@ -175,24 +215,18 @@ class ConnectionCorba : public ConnectionInterface
         RTT::InputPortInterface* remoteinputport = NULL;
         remoteinputport = (RTT::InputPortInterface*)controlTaskProxy->ports()->
                 getPort(outputPortName);
+
         if(remoteinputport == NULL)
-        {
-            globalLog(RTT::Error, "Inputport '%s' of the receiver module '%s' could not be resolved",
-                outputPortName.c_str(), receiverName.c_str());
             return false;
-        }
-  
-        // Connect the output porrt of the sender to the input port of the receiver.
+    
+        // Connect the output port of the sender to the input port of the receiver.
         // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
         // true=pull(problem here) false=push)
         if(!outputPort->connectTo(*remoteinputport, 
                 RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
-        {
-            globalLog(RTT::Error, "Outputport '%s' cant be connected to the input port of %s",
-                outputPortName.c_str(), receiverName.c_str());
             return false;
-        }
-        globalLog(RTT::Info, "Connected to '%s'", receiverName.c_str());
+
+        connected = true;
         return true;
     }
 
@@ -208,10 +242,10 @@ class ConnectionCorba : public ConnectionInterface
     RTT::Corba::ControlTaskProxy* controlTaskProxy;
     RTT::InputPort<fipa::BitefficientMessage>* inputPort;
     RTT::OutputPort<fipa::BitefficientMessage>* outputPort; 
-    bool isInitialized;
     bool portsCreated;
     bool proxyCreated;
     bool receiverConnected; // Ports are created and output port is connected.
+    bool connected;
 };
 } // namespace root
 #endif
