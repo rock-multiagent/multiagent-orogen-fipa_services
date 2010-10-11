@@ -14,13 +14,12 @@
 
 #include "TypelibMarshallerBase.hpp"
 
-#include "ModuleID.hpp"
-#include "RemoteConnection.hpp"
+#include "module_id.h"
+#include "connections/corba_connection.h"
+#include "messages/fipa_messages.h"
 
 namespace dc = dfki::communication;
 namespace rc = RTT::Corba;
-
-int test_counter = 0;
 
 namespace modules
 {

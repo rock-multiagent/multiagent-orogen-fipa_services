@@ -17,7 +17,7 @@ task_context "Module" do
     input_port('inputPortMTS', '/fipa/BitefficientMessage').
         doc('Direct input port for the messages of the mts (message-transport-service).')
 
-    method(:rpcConnectToModule).
+    method(:rpcCreateConnectPorts).
 	    argument('remote_name', 'std::string').
         argument('remote_ior', 'std::string').
         returns('bool').

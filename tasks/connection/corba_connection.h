@@ -1,3 +1,21 @@
+/*
+ * \file    corba_connection.h
+ *  
+ * \brief   
+ *
+ * \details 
+ *          
+ *          German Research Center for Artificial Intelligence\n
+ *          Project: Rimres
+ *
+ * \date    27.09.2010
+ *        
+ * \version 0.1 
+ *          
+ *
+ * \author  Stefan.Haase@dfki.de
+ */
+
 #ifndef MODULES_ROOT_CONNECTIONCORBA_HPP
 #define MODULES_ROOT_CONNECTIONCORBA_HPP
 
@@ -17,6 +35,7 @@ namespace Corba {
 
 namespace root
 {
+// TODO change name to CorbaFipaConnection or corbaHighLevelConnection...
 class CorbaConnection : public ConnectionInterface
 {
  public:
@@ -26,8 +45,13 @@ class CorbaConnection : public ConnectionInterface
             taskContextSender(sender),
             receiverName(receiver),
             receiverIOR(receiver_ior),
+            controlTaskProxy(NULL),
+            inputPort(NULL),
+            outputPort(NULL),
             portsCreated(false),
             proxyCreated(false),
+            receiverConnected(false),
+            connected(false)
     {
         senderName = task_context_local->getName();
         senderIOR = RTT::Corba::ControlTaskServer::getIOR(taskContext);
@@ -37,7 +61,21 @@ class CorbaConnection : public ConnectionInterface
                 
     ~CorbaConnection()
     {
-        disconnect();
+        if(controlTaskProxy)
+        {
+            delete controlTaskProxy;
+            controlTaskProxy = NULL;
+        }
+        if(inputPort)
+        {
+            delete inputPort;
+            inputPort = NULL;
+        }
+        if(outputPort)
+        {
+            delete outputPort;
+            outputPort = NULL;
+        } 
     }
 
     /**
@@ -47,31 +85,31 @@ class CorbaConnection : public ConnectionInterface
     {
         if(!createPorts())
         {
-            log(RTT::Info) << "Sender ports could not be created." << RTT::endlog();
+            log(RTT::Error) << "Sender ports could not be created." << RTT::endlog();
             return false;
         }
 
         if(!createProxy())
         {
-            log(RTT::Info) << "Sender proxy could not be created." << RTT::endlog();
+            log(RTT::Error) << "Sender proxy could not be created." << RTT::endlog();
             return false;
         }
 
         if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const &)>
                 ("rpcCreateConnectPorts"))
         {
-            log(RTT::Info) << "Receiver ports could not be created/connected." << 
+            log(RTT::Error) << "Receiver ports could not be created/connected." << 
                     RTT::endlog();
             return false;
         }
 
         if(!connectPorts())
         {
-            log(RTT::Info) << "Sender ports could not be connected." << RTT::endlog();
+            log(RTT::Error) << "Sender ports could not be connected." << RTT::endlog();
             return false;
         }
         log(RTT::Info) << "Modules " << senderName << " and " << receiverName << 
-                "connected." << RTT::endlog()
+                "connected." << RTT::endlog();
     }
 
     bool disconnect(){}; //virtual
@@ -231,6 +269,8 @@ class CorbaConnection : public ConnectionInterface
     }
 
  private:
+    CorbaConnection(){}
+
     std::string senderName;
     std::string senderIOR;
     std::string receiverName;

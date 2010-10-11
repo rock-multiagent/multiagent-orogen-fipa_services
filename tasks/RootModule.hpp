@@ -41,7 +41,6 @@
 #include <string>
 
 #include <rtt/Ports.hpp>
-#include <boost/shared_ptr.hpp>
 
 #include <service-discovery/ServiceDiscovery.h>
 
@@ -61,9 +60,10 @@ namespace orogen_transports {
     class TypelibMarshallerBase;
 }
 
-namespace modules
+namespace root
 {
-class RemoteConnection;
+class CorbaConnection;
+class FipaMessage;
 
 /**
  * Basis Module.
