@@ -22,8 +22,6 @@
 #include <string>
 #include <vector>
 
-#include <rtt/Logger.hpp>
-
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName&);             \
     void operator=(const TypeName&)
@@ -39,13 +37,7 @@ namespace root
 class ConnectionInterface
 {
  public:
-    ConnectionInterface()
-    {
-        if (RTT::log().getLogLevel() < RTT::Logger::Info)
-        {
-            RTT::log().setLogLevel(RTT::Logger::Info);
-        }
-    };
+    ConnectionInterface(){};
     virtual bool connect();
     virtual bool disconnect();
     virtual std::string getReceiverName();
