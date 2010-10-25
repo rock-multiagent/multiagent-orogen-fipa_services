@@ -6,41 +6,51 @@
 int main(int argc, char* argv[])
 {
     using namespace root;
-    std::cout << "Testing FipaMessage..." << std::endl;
+
+    // Create fipa message with predefined parameters.
     FipaMessage fipa;
-    
-    std::cout << "Set message" << std::endl;
-    bool ret = fipa.setMessage("SENDER sender RECEIVER receiver1 \
-            RECEIVER receiver2 PERFORMATIVE inform");
 
-    std::cout << "Encode message" << std::endl;
-    std::string str = fipa.encodeMessage();
-    std::cout << str << std::endl;
+    // mod1 should send to mod2 and mod3 a "Hi guys!".
+    try{
+        if(argc > 1)
+            fipa.setMessage(argv[1]);
+        else
+            fipa.setMessage("PERFORMATIVE inform SENDER mod1 RECEIVER START mod2 mod3 STOP CONTENT START Hi guys! STOP");
 
-    std::cout << "Decode message" << std::endl;
-    if(!fipa.decodeMessage(str))
-        std::cerr << "Error decoding message." << std::endl;
-    else 
-         std::cout << "Message decoded" << std::endl;
-    
-    std::cout << "Request decoded entries" << std::endl;
-    std::vector<std::string>* entries = NULL;
-    if(fipa.getEntriesP("RECEIVER", &entries) > 0)
-    {
-        if(entries == NULL)
-        {
-            std::cout << "entrie NULL!" << std::endl;
-            exit(1);
-        } else {
-            std::cout << "entries size: " << entries->size() << std::endl;
-        }
 
-        entries->push_back("receiver3");
-        std::cout << "Receivers: ";
-        for(int i=0; i<entries->size(); i++)
-        {
-            std::cout << entries->at(i) << " ";
-        }
-        std::cout << std::endl;
+        // Encode message and return byte string.
+        std::string msg_encoded = fipa.encode();    
+        std::cout << msg_encoded << std::endl;
+
+        // Decode message.
+        fipa.decode(msg_encoded);
+
+        // Read answer.
+        std::vector<std::string>& entries = fipa.getEntry("RECEIVER");
+        for(int i=0; i<entries.size(); i++)
+            std::cout << entries[i] << std::endl;
+
+        // Change receiver.
+        //entries.clear(); // or
+        fipa.clear("RECEIVER SENDER"); // Clears receiver and sender parameters.
+        entries.push_back("new_receiver");
+
+        // Encode and decode again with new receiver.
+        std::cout << (msg_encoded = fipa.encode()) << std::endl;
+        fipa.decode(msg_encoded);
+        entries = fipa.getEntry("RECEIVER");
+        std::cout << "New receiver: " << entries[0] << std::endl;
+
+        // Use aclMessage directly.
+        fipa::acl::ACLMessage* aclMSG = fipa.getACLMessage();
+        std::cout << "ACLMessage receiver: " <<  aclMSG->getAllReceivers()[0].getName() << std::endl;
+
+        // Clear parameter-map.
+        fipa.clear();
+        entries = fipa.getEntry("RECEIVER");
+        std::cout << "Entry 'receiver' size: " << entries.size() << std::endl;
+
+    } catch (MessageInterface::MessageException& e) {
+        std::cout << e.what() << std::endl;
     }
 }

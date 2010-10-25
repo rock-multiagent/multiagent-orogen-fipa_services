@@ -19,6 +19,7 @@
 #define MODULES_ROOT_MESSAGES_INTERFACE_HPP
 
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -29,16 +30,24 @@ namespace root
 /**
  * This abstract class is used to work with different kinds of message formats.
  * It allows to define a message using a simple string format which contains
- * <parameter entry> pairs. The inherited classes takes care of encoding and decoding of the 
- * stored informations. encodeMessage() returns the encoded message as a byte-string.
+ * <parameter entry> pairs. The inherited classes takes care of encoding and decoding of 
+ * the stored informations. encodeMessage() returns the encoded message as a byte-string.
  * decodeMessage() decodes the message and fills the parameter-map.
  */
 class MessageInterface
 {
  public:
+    class MessageException : public std::runtime_error
+    {
+     public:
+	    MessageException(const std::string& msg) : runtime_error(msg)
+	    {
+	    }
+    };
+
     struct MessageParameter
     {
-        MessageParameter(std::string name)
+        MessageParameter(std::string const& name)
         {
             this->name = name;
         }
@@ -74,28 +83,26 @@ class MessageInterface
      * whose entries should be cleared. If an empty string is passed
      * (default) all parameter-entries are removed.
      */
-    void clear(std::string const parameter_names="");
+    void clear(std::string const& parameter_names="");
 
     /** 
      * Should decode the message and fills the parameter-map.
      */
-    virtual bool decodeMessage(std::string& message) = 0;
+    virtual void decode(std::string const& message) = 0;
 
     /**
      * Uses the entries in the parameters-map and returns the encoded 
      * message as a byte-string.
      */
-    virtual std::string encodeMessage() = 0;
+    virtual std::string encode() = 0;
 
     /**
-     * Use to request the parameter entries.
+     * Use to request the parameter-entries.
+     * Throws a MessageException if an error occurred.
      * \param parameter_name Name of the parameter, depend on the used language.
-     * \param parameters Passed pointer gets the address of the entry-vector, so the values kann
-     * be modified directly.
-     * \return -1 if the parameter is unknown, -2 if one of the entries is empty.
-     * Otherwise the number of the entries is returned.
+     * \return Pointer to the entry-vector.
      */
-    int getEntriesP(std::string const parameter_name, std::vector<std::string>** entries);
+    std::vector<std::string>& getEntry(std::string const& parameter_name);
 
     /**
      * Parses the input string and fills the parameters-map.
@@ -103,14 +110,15 @@ class MessageInterface
      * START and STOP groups values together.
      * E.g.: <i> PERFORMATIVE inform SENDER mod1 RECEIVER START mod2 mod3 STOP </i>\n
      * Look at the class description of each supported language for further informations.
+     * Throws MessageException.
      */
-    bool setMessage(std::string input);  
+    void setMessage(std::string const& input);  
 
  protected:
     /**
      * Defines the valid parameter names.
      */
-    MessageInterface(std::string* parameters, int const noParas);
+    MessageInterface(std::string const* parameters, int const noParas);
 
  protected:
     std::map<std::string, MessageParameter> parameters; 

@@ -1,7 +1,6 @@
 #include "fipa_message.h"
 
 #include <iostream>
-#include <sstream>
 
 #include <message-generator/ACLMessageOutputParser.h>
 #include <message-parser/message_parser.h>
@@ -20,14 +19,13 @@ FipaMessage::FipaMessage() :
 {
 }
 
-bool FipaMessage::decodeMessage(std::string& message)
+void FipaMessage::decode(std::string const& message)
 {
     fa::MessageParser parser = fa::MessageParser();
     fa::ACLMessage aclmsg;
     if(!parser.parseData(message, aclmsg))
     {
-        std::cerr << "Message could not be parsed." << std::endl;
-        return false;
+        throw new MessageException("Fipa message could not be parsed.");
     }
     // Clears the parameter map.
     clear();
@@ -36,7 +34,7 @@ bool FipaMessage::decodeMessage(std::string& message)
     std::vector<fa::AgentID> agent_ids; 
     std::string entry;
 
-    // Do not add the entries if they are empty.
+    // Empty entries will be skipped.
     if(!(entry = aclmsg.getPerformative()).empty()) 
         parameters.find("PERFORMATIVE")->second.addEntry(entry);
     if(!(entry = aclmsg.getSender().getName()).empty()) 
@@ -78,17 +76,21 @@ bool FipaMessage::decodeMessage(std::string& message)
         parameters.find("IN-REPLY-TO")->second.addEntry(entry);
     if(!(entry = aclmsg.getReplyBy1()).empty()) 
         parameters.find("REPLY-BY")->second.addEntry(entry);
-
-    return true;  
 }
 
-std::string FipaMessage::encodeMessage()
+std::string FipaMessage::encode()
 {
-    createACLMessage(); // use bool!
+    if(!createACLMessage())
+        throw MessageException("ACL-Message could not be created.");
     // Create bit-efficient byte-string.
     fa::ACLMessageOutputParser generator = fa::ACLMessageOutputParser();
     generator.setMessage(*aclMSG);
-    return generator.getBitMessage(); // can Contentthrow MessageGeneratorException!
+    try{
+        std::string bitmsg = generator.getBitMessage(); 
+        return bitmsg;
+    } catch(MessageGeneratorException& e) {
+        throw MessageException("Bit encoding failed: " + std::string(e.what()));
+    }
 }
 
 ////////////////////////////////////////////////////////////////////

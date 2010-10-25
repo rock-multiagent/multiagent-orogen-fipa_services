@@ -1,11 +1,13 @@
 #include "message_interface.h"
 
+#include <iostream>
+
 namespace root
 {
 ////////////////////////////////////////////////////////////////////
 //                           PUBLIC                               //
 ////////////////////////////////////////////////////////////////////
-void MessageInterface::clear(std::string const parameter_names)
+void MessageInterface::clear(std::string const& parameter_names)
 {
     // Clear all entries.
     if(parameter_names == "")
@@ -32,38 +34,27 @@ void MessageInterface::clear(std::string const parameter_names)
     }
 }
 
-int MessageInterface::getEntriesP(std::string const parameter_name, 
-        std::vector<std::string>** entries)
+std::vector<std::string>& MessageInterface::getEntry(std::string const& parameter_name)
 {        
     std::map<std::string, MessageParameter>::iterator it;
     it = parameters.find(parameter_name);
-    // Parameter available?
-    if(it != parameters.end()) {
-        *entries = &(it->second.entries);
-    } else {
-        entries = NULL;
-        return -1;
+    // Parameter not available?
+    if(it == parameters.end()) {
+        throw MessageException("Parameter '" + parameter_name + "' unknown.");
     }
-
-    int size = it->second.entries.size();
-    // Entries all valid?
-    bool valid = true;
-    for(int i=0; i<size; i++)
+    // Entries not empty?
+    for(int i=0; i < it->second.entries.size(); i++)
     {
         if(it->second.entries.empty())
         {
-            valid = false;
-            break;
+            throw MessageException("Entry of parameter '" + 
+                    parameter_name + "' is empty.");
         }
     }
-    if(!valid)
-        return -2;
-
-    // Entries available?
-    return size;
+    return it->second.entries;
 }
 
-bool MessageInterface::setMessage(std::string input)
+void MessageInterface::setMessage(std::string const& input)
 {
     typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
     boost::char_separator<char> sep(" ");
@@ -72,34 +63,42 @@ bool MessageInterface::setMessage(std::string input)
     {
         std::string param = *tok_iter; 
         ++tok_iter;
-        if(tok_iter == tokens.end()) return false;
+        if(tok_iter == tokens.end())
+            throw MessageException("Wrong input format.");
         std::string entry = *tok_iter;
 
         // Get parameter.
         std::map<std::string, MessageParameter>::iterator it = parameters.find(param);
         if(it == parameters.end()) // Unknwon parameter.
         {
-            return false;
+            throw MessageException("Parameter '" + param + "' unknown.");
         }
         if(entry == "START") // Add all following entries until STOP.
         {
-            for(++tok_iter; tok_iter != tokens.end() && *tok_iter != "STOP" ; ++tok_iter)
+            bool stop_found = false;
+            for(++tok_iter; tok_iter != tokens.end(); ++tok_iter)
             {
+                if(*tok_iter == "STOP")
+                {
+                    stop_found = true;
+                    break;
+                }
                 it->second.addEntry(*tok_iter);
             }
+            if(!stop_found)
+                throw MessageException("Wrong input format.");
         } 
         else // Just add the single entry. 
         {
             it->second.addEntry(*tok_iter);
         }
     }
-    return true;
 }
 
 ////////////////////////////////////////////////////////////////////
 //                           PROTECTED                            //
 ////////////////////////////////////////////////////////////////////
-MessageInterface::MessageInterface(std::string* parameter_names, int const noParas)
+MessageInterface::MessageInterface(std::string const* parameter_names, int const noParas)
 {
     for(int i=0; i<noParas; i++)
     {

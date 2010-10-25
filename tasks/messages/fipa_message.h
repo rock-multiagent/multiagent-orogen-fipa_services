@@ -49,14 +49,16 @@ class FipaMessage : public MessageInterface
 
     /**
      * Decodes the message and clears and refills the parameter-map.
+     * Can throw a MessageException.
      */ 
-    bool decodeMessage(std::string& message); // virtual
+    void decode(std::string const& message); // virtual
 
     /**
      * Returns the encoded message as a string.
-     * Uses the entries stored in the parameter-map.
+     * Uses the entries stored in the parameter-map.    
+     * Can throw MessageException.
      */
-    std::string encodeMessage(); // virtual
+    std::string encode(); // virtual
 
     inline fa::ACLMessage* getACLMessage()
     {
