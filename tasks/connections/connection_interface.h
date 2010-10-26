@@ -19,15 +19,20 @@
 #ifndef MODULES_ROOT_CONNECTIONINTERFACE_HPP
 #define MODULES_ROOT_CONNECTIONINTERFACE_HPP
 
+#include <stdexcept>
 #include <string>
 #include <vector>
 
-#define DISALLOW_COPY_AND_ASSIGN(TypeName) \
-    TypeName(const TypeName&);             \
-    void operator=(const TypeName&)
-
 namespace root
 {
+class ConnectionException : public std::runtime_error
+{
+ public:
+    ConnectionException(const std::string& msg) : runtime_error(msg)
+    {
+    }
+};
+
 /**
  * Connection interface between different modules
  * and betweeen modules and socket servers.
@@ -37,17 +42,17 @@ namespace root
 class ConnectionInterface
 {
  public:
-    ConnectionInterface(){};
+    ~ConnectionInterface(){};
     virtual bool connect();
     virtual bool disconnect();
     virtual std::string getReceiverName();
     virtual std::string getSenderName();
     virtual bool initialize(){};
-    virtual bool readData(std::string* data);
-    virtual bool sendData(std::string data);
+    virtual std::string readData();
+    virtual bool sendData(std::string const& data);
 
- private:
-    DISALLOW_COPY_AND_ASSIGN(ConnectionInterface);
+ protected:
+    ConnectionInterface(){};
 };
 } // namespace root
 

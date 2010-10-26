@@ -1,6 +1,5 @@
 include(modulesTaskLib)
 
-add_subdirectory(connections)
 add_subdirectory(messages)
 
 set(SOURCES module_id.cpp) 

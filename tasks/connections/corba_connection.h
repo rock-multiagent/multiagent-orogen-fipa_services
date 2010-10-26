@@ -23,6 +23,13 @@
     TypeName(const TypeName&);             \
     void operator=(const TypeName&)
 
+#include <string>
+
+#include <rtt/Ports.hpp>
+
+#include "connection_interface.h"
+#include "fipa_msg_object.h"
+
 /* Forward Declaration. */
 namespace RTT{
     class TaskContext;
@@ -33,50 +40,32 @@ namespace Corba {
 
 namespace root
 {
-// TODO change name to CorbaFipaConnection or corbaHighLevelConnection...
 class CorbaConnection : public ConnectionInterface
 {
  public:
     CorbaConnection(RTT::TaskContext* sender, std::string receiver, 
-            str::string receiver_ior) : 
-            ConnectionInterface(),
-            taskContextSender(sender),
-            receiverName(receiver),
-            receiverIOR(receiver_ior),
-            controlTaskProxy(NULL),
-            inputPort(NULL),
-            outputPort(NULL),
-            portsCreated(false),
-            proxyCreated(false),
-            receiverConnected(false),
-            connected(false)
-    {
-    }
+            std::string receiver_ior);
                 
-    ~CorbaConnection()
-    {
-    }
+    ~CorbaConnection();
 
     /**
      * Creates and connects the ports of the sender and receiver module. 
      */
     bool connect(); //virtual
 
-    bool disconnect() //virtual
-    {
-    }
+    bool disconnect(); //virtual
 
-    std::string getSenderName() //virtual
+    inline std::string getSenderName() //virtual
     {
         return senderName;
     }
 
-    std::string getReceiverName() //virtual
+    inline std::string getReceiverName() //virtual
     {
         return receiverName;
     }
 
-    bool readData(std::string* data); //virtual
+    std::string readData(); //virtual
 
     /**
      * Sends the data to the receiver, if the connection has been established.
@@ -86,8 +75,8 @@ class CorbaConnection : public ConnectionInterface
     bool sendData(std::string data); //virtual
 
  private:
-    ConnectionCorba();
-    DISALLOW_COPY_AND_ASSIGN(ConnectionInterface);
+    CorbaConnection();
+    DISALLOW_COPY_AND_ASSIGN(CorbaConnection);
 
     bool createPorts();
 
@@ -114,8 +103,6 @@ class CorbaConnection : public ConnectionInterface
     bool connectPorts();
 
  private:
-    CorbaConnection(){}
-
     std::string senderName;
     std::string senderIOR;
     std::string receiverName;

@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
         entries = fipa.getEntry("RECEIVER");
         std::cout << "Entry 'receiver' size: " << entries.size() << std::endl;
 
-    } catch (MessageInterface::MessageException& e) {
+    } catch (MessageException& e) {
         std::cout << e.what() << std::endl;
     }
 }

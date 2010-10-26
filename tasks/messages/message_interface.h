@@ -27,6 +27,14 @@
 
 namespace root
 {
+class MessageException : public std::runtime_error
+{
+ public:
+    MessageException(const std::string& msg) : runtime_error(msg)
+    {
+    }
+};
+
 /**
  * This abstract class is used to work with different kinds of message formats.
  * It allows to define a message using a simple string format which contains
@@ -37,14 +45,6 @@ namespace root
 class MessageInterface
 {
  public:
-    class MessageException : public std::runtime_error
-    {
-     public:
-	    MessageException(const std::string& msg) : runtime_error(msg)
-	    {
-	    }
-    };
-
     struct MessageParameter
     {
         MessageParameter(std::string const& name)
