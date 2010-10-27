@@ -2,7 +2,12 @@ include(modulesTaskLib)
 
 add_subdirectory(messages)
 
-set(SOURCES module_id.cpp) 
+set(SOURCES 
+    module_id.cpp
+    fipa_message.cpp
+    
+)
+ 
 set(MODULES_TASKLIB_SOURCES ${MODULES_TASKLIB_SOURCES} ${SOURCES})
 
 ADD_LIBRARY(${MODULES_TASKLIB_NAME} SHARED ${MODULES_TASKLIB_SOURCES})

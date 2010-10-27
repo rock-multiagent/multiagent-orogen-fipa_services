@@ -52,31 +52,29 @@ bool CorbaConnection::connect() //virtual
 {
     if(!createPorts())
     {
-        log(RTT::Error) << "Sender ports could not be created." << RTT::endlog();
+        throw ConnectionException("Sender ports could not be created.");
         return false;
     }
 
     if(!createProxy())
     {
-        log(RTT::Error) << "Sender proxy could not be created." << RTT::endlog();
+        throw ConnectionException("Sender proxy could not be created.");
         return false;
     }
 
     if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const &)>
             ("rpcCreateConnectPorts"))
     {
-        log(RTT::Error) << "Receiver ports could not be created/connected." << 
-                RTT::endlog();
+        throw ConnectionException("Receiver ports could not be created/connected.");
         return false;
     }
 
     if(!connectPorts())
     {
-        log(RTT::Error) << "Sender ports could not be connected." << RTT::endlog();
+        throw ConnectionException("Sender ports could not be connected.");
         return false;
     }
-    log(RTT::Info) << "Modules " << senderName << " and " << receiverName << 
-            "connected." << RTT::endlog();
+    return true;
 }
 
 bool CorbaConnection::disconnect(){}; //virtual
