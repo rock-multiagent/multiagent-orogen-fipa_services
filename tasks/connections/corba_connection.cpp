@@ -12,17 +12,17 @@ namespace root
 CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver, 
         std::string receiver_ior) : 
         ConnectionInterface(),
-        taskContextSender(sender),
-        receiverName(receiver),
         receiverIOR(receiver_ior),
+        taskContextSender(sender),
         controlTaskProxy(NULL),
         inputPort(NULL),
         outputPort(NULL),
         portsCreated(false),
         proxyCreated(false),
-        receiverConnected(false),
-        connected(false)
+        receiverConnected(false)
 {
+    receiverName = receiver;
+    connected = false;
     senderName = sender->getName();
     senderIOR = RTT::Corba::ControlTaskServer::getIOR(sender);
     inputPortName = receiverName + "->" + senderName + "_port";    
@@ -77,9 +77,31 @@ bool CorbaConnection::connect() //virtual
     return true;
 }
 
-bool CorbaConnection::disconnect(){}; //virtual
+bool CorbaConnection::connectLocal() //virtual
+{
+    if(!createPorts())
+    {
+        throw ConnectionException("Sender ports could not be created.");
+        return false;
+    }
 
-std::string CorbaConnection::readData() //virtual
+    if(!createProxy())
+    {
+        throw ConnectionException("Sender proxy could not be created.");
+        return false;
+    }
+
+    if(!connectPorts())
+    {
+        throw ConnectionException("Sender ports could not be connected.");
+        return false;
+    }
+    return true;
+}
+
+bool CorbaConnection::disconnect(){return true;}; //virtual
+
+std::string CorbaConnection::read() //virtual
 {
     fipa::BitefficientMessage msg;
     if(!inputPort->read(msg))
@@ -89,7 +111,7 @@ std::string CorbaConnection::readData() //virtual
     return msg.toString();
 }
 
-bool CorbaConnection::sendData(std::string data) //virtual
+bool CorbaConnection::send(std::string const& data) //virtual
 {
     if(!connected)
     {

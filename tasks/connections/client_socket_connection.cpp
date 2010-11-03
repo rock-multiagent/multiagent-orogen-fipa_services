@@ -4,7 +4,7 @@ namespace root
 {
 ClientSocketConnection::ClientSocketConnection(std::string sender, std::string host, int port) :
         ConnectionInterface(),
-        sender(sender),
+        senderName(sender),
         host(host),
         port(port),
         socket(NULL),
@@ -46,12 +46,7 @@ std::string ClientSocketConnection::getReceiverName() //virtual
     return host + ":" + out.str();
 }
 
-std::string ClientSocketConnection::getSenderName() //virtual
-{
-    return sender;
-}
-
-std::string ClientSocketConnection::readData()
+std::string ClientSocketConnection::read()
 {
     if(!connected)
     {
@@ -67,7 +62,7 @@ std::string ClientSocketConnection::readData()
     return data;
 }
 
-bool ClientSocketConnection::sendData(std::string data) //virtual
+bool ClientSocketConnection::send(std::string const& data) //virtual
 {
     if(!connected)
     {

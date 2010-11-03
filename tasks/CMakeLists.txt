@@ -1,39 +1,41 @@
-include(modulesTaskLib)
+include(rootTaskLib)
 
-add_subdirectory(messages)
+SET(HEADERS
+    module_id.h
+    connections/connection_interface.h
+    connections/client_socket_connection.h
+    connections/corba_connection.h
+    messages/message_interface.h
+    messages/fipa_message.h
+)
 
-set(SOURCES 
+SET(SOURCES 
     module_id.cpp
-    fipa_message.cpp
-    
+    messages/message_interface.cpp
+    messages/fipa_message.cpp
+    connections/corba_connection.cpp
 )
- 
-set(MODULES_TASKLIB_SOURCES ${MODULES_TASKLIB_SOURCES} ${SOURCES})
 
-ADD_LIBRARY(${MODULES_TASKLIB_NAME} SHARED ${MODULES_TASKLIB_SOURCES})
+SET(ROOT_TASKLIB_HEADERS ${ROOT_TASKLIB_HEADERS} ${HEADERS})
+SET(ROOT_TASKLIB_SOURCES ${ROOT_TASKLIB_SOURCES} ${SOURCES})
 
-add_dependencies(${MODULES_TASKLIB_NAME} regen-toolkit)
+ADD_LIBRARY(${ROOT_TASKLIB_NAME} SHARED ${ROOT_TASKLIB_SOURCES})
 
-TARGET_LINK_LIBRARIES(
-    ${MODULES_TASKLIB_NAME}
+ADD_DEPENDENCIES(${ROOT_TASKLIB_NAME} regen-toolkit)
+
+TARGET_LINK_LIBRARIES(${ROOT_TASKLIB_NAME}
     ${OrocosRTT_LIBRARIES}
-    ${MODULES_TASKLIB_DEPENDENT_LIBRARIES}
-    ${MESSAGE_PARSER_LIBRARIES}
-    ${SERVICE_DISCOVERY_LIBRARIES}
-    ${SIGC++_LIBRARY}
+    ${ROOT_TASKLIB_DEPENDENT_LIBRARIES}
 )
 
-SET_TARGET_PROPERTIES(${MODULES_TASKLIB_NAME}
-    PROPERTIES LINK_INTERFACE_LIBRARIES "${MODULES_TASKLIB_INTERFACE_LIBRARIES}")
+SET_TARGET_PROPERTIES(${ROOT_TASKLIB_NAME}
+    PROPERTIES LINK_INTERFACE_LIBRARIES "${ROOT_TASKLIB_INTERFACE_LIBRARIES}")
 
-INSTALL(TARGETS ${MODULES_TASKLIB_NAME}
+INSTALL(TARGETS ${ROOT_TASKLIB_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib/orocos)
 
-INSTALL(FILES ${MODULES_TASKLIB_HEADERS}
-    DESTINATION include/orocos/modules)
+INSTALL(FILES ${ROOT_TASKLIB_HEADERS}
+    DESTINATION include/orocos/root)
 
-set(HEADERS module_ip.h)
-INSTALL(FILES ${HEADERS}
-    DESTINATION include/orocos/modules/tasks)
 

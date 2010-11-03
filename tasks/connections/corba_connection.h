@@ -53,26 +53,22 @@ class CorbaConnection : public ConnectionInterface
      */
     bool connect(); //virtual
 
+    /**
+     * Create and connect the ports of this local module.
+     * Same as connect() without createConnectPortsOnReceiver().
+     */
+    bool connectLocal();
+
     bool disconnect(); //virtual
 
-    inline std::string getSenderName() //virtual
-    {
-        return senderName;
-    }
-
-    inline std::string getReceiverName() //virtual
-    {
-        return receiverName;
-    }
-
-    std::string readData(); //virtual
+    std::string read(); //virtual
 
     /**
      * Sends the data to the receiver, if the connection has been established.
      * \warning The return value will be true even if the data does not reach 
      * the receiver.
      */
-    bool sendData(std::string data); //virtual
+    bool send(std::string const& data); //virtual
 
  private:
     CorbaConnection();
@@ -103,9 +99,7 @@ class CorbaConnection : public ConnectionInterface
     bool connectPorts();
 
  private:
-    std::string senderName;
     std::string senderIOR;
-    std::string receiverName;
     std::string receiverIOR;
     std::string inputPortName;
     std::string outputPortName;
@@ -117,7 +111,6 @@ class CorbaConnection : public ConnectionInterface
     bool portsCreated;
     bool proxyCreated;
     bool receiverConnected; // Ports are created and output port is connected.
-    bool connected;
 };
 } // namespace root
 #endif

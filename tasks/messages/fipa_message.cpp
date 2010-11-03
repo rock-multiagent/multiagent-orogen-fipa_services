@@ -42,12 +42,12 @@ void FipaMessage::decode(std::string const& message)
 
     agent_ids = aclmsg.getAllReceivers();
     it = parameters.find("RECEIVER");
-    for(int i=0; i<agent_ids.size(); i++)
+    for(unsigned int i=0; i<agent_ids.size(); i++)
         it->second.addEntry(agent_ids[i].getName());
 
     agent_ids = aclmsg.getAllReplyTo();
     it = parameters.find("REPLY-TO");
-    for(int i=0; i<agent_ids.size(); i++)
+    for(unsigned int i=0; i<agent_ids.size(); i++)
         it->second.addEntry(agent_ids[i].getName());    
 
     it = parameters.find("CONTENT");
@@ -93,6 +93,19 @@ std::string FipaMessage::encode()
     }
 }
 
+bool FipaMessage::setParameter(std::string const& parameter, 
+        std::vector<std::string> const& entries)
+{
+    std::map<std::string, MessageParameter>::iterator it;
+    it = parameters.find(parameter);
+    if(it != parameters.end()) {
+        it->second.entries = entries;
+        return true;
+    } else {
+        return false;
+    }
+}
+
 ////////////////////////////////////////////////////////////////////
 //                           PRIVATE                              //
 ////////////////////////////////////////////////////////////////////
@@ -104,7 +117,10 @@ bool FipaMessage::createACLMessage()
         delete aclMSG;
         aclMSG = NULL;
     }
-    aclMSG = new fa::ACLMessage();
+    if(getEntry("PERFORMATIVES").size() == 0)
+        aclMSG = new fa::ACLMessage();
+    else
+        aclMSG = new fa::ACLMessage(fa::INFORM);
 
     // Runs through the parameters and fill the ACLMessage.
     std::map<std::string, MessageParameter>::iterator it;

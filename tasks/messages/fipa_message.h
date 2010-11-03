@@ -65,9 +65,13 @@ class FipaMessage : public MessageInterface
         return aclMSG;
     }
 
+    bool setParameter(std::string const& parameter, 
+            std::vector<std::string> const& entries);
+
  private:
     /**
      * Fills the ACLMessage using the information of the parameters-map.
+     * If no performatives is defined, 'inform' will be used.
      */
     bool createACLMessage();
 

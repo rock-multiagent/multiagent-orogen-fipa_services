@@ -43,16 +43,21 @@ class ConnectionInterface
 {
  public:
     ~ConnectionInterface(){};
-    virtual bool connect();
-    virtual bool disconnect();
-    virtual std::string getReceiverName();
-    virtual std::string getSenderName();
-    virtual bool initialize(){};
-    virtual std::string readData();
-    virtual bool sendData(std::string const& data);
+    virtual bool connect()=0;
+    virtual bool disconnect()=0;
+    inline std::string getReceiverName(){return receiverName;};
+    inline std::string getSenderName(){return senderName;};
+    inline bool initialize(){return true;};
+    inline bool isConnected(){return connected;};
+    virtual std::string read()=0;
+    virtual bool send(std::string const& data)=0;
 
  protected:
     ConnectionInterface(){};
+
+    std::string senderName;
+    std::string receiverName;
+    bool connected;
 };
 } // namespace root
 

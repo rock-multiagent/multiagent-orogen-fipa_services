@@ -1,35 +1,13 @@
-PROJECT(modules)
+PROJECT(root)
 cmake_minimum_required(VERSION 2.6)
 
-SET (CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.orogen/config;${CMAKE_SOURCE_DIR}/cmake")
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/.orogen/config;${CMAKE_SOURCE_DIR}/cmake")
 
-include(FindPkgConfig RESULT_VARIABLE PKG_CONFIG_FOUND)
-pkg_check_modules(MESSAGE_GENERATOR REQUIRED "message-generator")
-pkg_check_modules(MESSAGE_PARSER REQUIRED "message-parser")
-pkg_check_modules(SERVICE_DISCOVERY REQUIRED "service-discovery")
-
-include_directories(
-    ${MESSAGE_GENERATOR_INCLUDE_DIRS}
-	${MESSAGE_PARSER_INCLUDE_DIRS} 
-    ${SERVICE_DISCOVERY_INCLUDE_DIRS}
+include_directories (
+    ${CMAKE_SOURCE_DIR}/tasks
 )
 
-link_directories(
-    ${MESSAGE_PARSER_LIBRARY_DIRS}
-    ${SERVICE_DISCOVERY_LIBRARY_DIRS}
-)
+INCLUDE(rootBase)
 
-# using the scripts in cmake
-find_package(SIGC++ REQUIRED)
-set(Boost_LOCALFIRST TRUE)
-set(Boost_ADDITIONAL_VERSION 1.42 1.43)
-find_package(Boost REQUIRED)
-
-include_directories ( 
-    ${SIGC++_INCLUDES}
-    ${Boost_INCLUDE_DIRS}
-)
-
-INCLUDE(modulesBase)
-
-
+# FIND_PACKAGE(KDL)
+# FIND_PACKAGE(OCL)

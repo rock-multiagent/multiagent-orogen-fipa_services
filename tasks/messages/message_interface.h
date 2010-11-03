@@ -112,7 +112,12 @@ class MessageInterface
      * Look at the class description of each supported language for further informations.
      * Throws MessageException.
      */
-    void setMessage(std::string const& input);  
+    void setMessage(std::string const& input);
+
+    /**
+     * Should be used to set the entries of a parameter directly.
+     */
+    virtual bool setParameter(std::string const& parameter, std::vector<std::string> const& entries)=0;
 
  protected:
     /**

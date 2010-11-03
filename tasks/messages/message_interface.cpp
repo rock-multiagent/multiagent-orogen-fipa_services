@@ -43,7 +43,7 @@ std::vector<std::string>& MessageInterface::getEntry(std::string const& paramete
         throw MessageException("Parameter '" + parameter_name + "' unknown.");
     }
     // Entries not empty?
-    for(int i=0; i < it->second.entries.size(); i++)
+    for(unsigned int i=0; i < it->second.entries.size(); i++)
     {
         if(it->second.entries.empty())
         {

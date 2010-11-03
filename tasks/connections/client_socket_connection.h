@@ -42,16 +42,11 @@ class ClientSocketConnection : public ConnectionInterface
 
     bool disconnect(); //virtual
 
-    std::string getReceiverName(); //virtual
+    std::string read();
 
-    std::string getSenderName(); //virtual
-
-    std::string readData();
-
-    bool sendData(std::string data); //virtual
+    bool send(std::string const& data); //virtual
 
  private:
-    std::string sender;
     std::string host;
     int port;
     dcp::ClientSocket* socket;

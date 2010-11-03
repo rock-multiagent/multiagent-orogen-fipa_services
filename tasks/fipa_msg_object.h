@@ -44,7 +44,7 @@ struct BitefficientMessage {
 
     inline void push_back(std::string msg)
     {
-        for(int i=0; i<msg.size(); i++)
+        for(unsigned int i=0; i<msg.size(); i++)
         {
             this->data.push_back(msg[i]);
         } 

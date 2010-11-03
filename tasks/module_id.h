@@ -30,7 +30,7 @@
     TypeName(const TypeName&);             \
     void operator=(const TypeName&)
 
-namespace modules
+namespace root
 {
 /**
  * The ID (name of the module) of each module is build up like ENVID-TYPE-NAME.
@@ -46,26 +46,34 @@ namespace modules
 class ModuleID
 {
  public:
+    ModuleID(std::string const& module_id)
+    {
+        splitID(module_id, &mEnvID, &mType, &mName);
+    }
+
     /**
      * Splits up the passed 'module_id' in the 'envID', 'type' and 'module_name'
      * (pointers must not be NULL). 'tokens' contains the separation-chars,
      * default is '_'. Use this method if you need all parts of the module-id. 
      * If the id could not be passed, empty strings will be set.
      */
-    static bool splitID(std::string module_id,
+    static bool splitID(std::string const& module_id,
             std::string* envID,
             std::string* type,
-            std::string* module_name, 
+            std::string* name, 
             std::string tokens_="_");
 
-    static std::string getEnvID(std::string module_id, std::string tokens="_");
-
-    static std::string getType(std::string module_id, std::string tokens="_");
-
-    static std::string getModuleName(std::string module_id, std::string tokens="_");
+    static std::string getEnvID(std::string const& module_id, std::string tokens="_");
+    inline std::string getEnvID(){return mEnvID;}
+    static std::string getType(std::string const& module_id, std::string tokens="_");
+    inline std::string getType(){return mType;}
+    static std::string getName(std::string const& module_id, std::string tokens="_");
+    inline std::string getName(){return mName;}
 
  private:
-    ModuleID(){};
+    std::string mEnvID;
+    std::string mType;
+    std::string mName;
 };
 } // namespace modules
 #endif
