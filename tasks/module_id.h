@@ -48,6 +48,7 @@ class ModuleID
  public:
     ModuleID(std::string const& module_id)
     {
+        mID = module_id;
         splitID(module_id, &mEnvID, &mType, &mName);
     }
 
@@ -57,20 +58,19 @@ class ModuleID
      * default is '_'. Use this method if you need all parts of the module-id. 
      * If the id could not be passed, empty strings will be set.
      */
-    static bool splitID(std::string const& module_id,
+    bool splitID(std::string const& module_id,
             std::string* envID,
             std::string* type,
             std::string* name, 
             std::string tokens_="_");
 
-    static std::string getEnvID(std::string const& module_id, std::string tokens="_");
+    inline std::string getID(){return mID;}
     inline std::string getEnvID(){return mEnvID;}
-    static std::string getType(std::string const& module_id, std::string tokens="_");
     inline std::string getType(){return mType;}
-    static std::string getName(std::string const& module_id, std::string tokens="_");
     inline std::string getName(){return mName;}
 
  private:
+    std::string mID;
     std::string mEnvID;
     std::string mType;
     std::string mName;

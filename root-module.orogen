@@ -36,6 +36,8 @@ task_context "Module" do
     input_port('inputPortMTS', '/fipa/BitefficientMessage').
         doc('Direct input port for the messages of the mts (message-transport-service).')
 
+    port_driven
+
     # method(:rpcCreateConnectPorts).
     method('rpcCreateConnectPorts').
 	    argument('remote_name', 'std::string').
@@ -46,11 +48,29 @@ task_context "Module" do
 end
 
 deployment "root_module" do
-    add_default_logger
-    enable_corba
+    #enable_corba
     mod = task("root_module", "root::Module").
         priority('10').
-        periodic('0.01').
+        periodic('0.01')
+        #start
+    mod.module_name = 'A_ROOT_1'
+    mod.avahi_type = '_rimres._tcp'
+    mod.avahi_port = 12000
+    mod.avahi_ttl = 0
         #port_driven.   #<-default 
-        start
+    add_default_logger
+end
+
+deployment "root_module_" do
+    #enable_corba
+    mod2 = task("root_module_", "root::Module").
+        priority('10').
+        periodic('0.01')
+        #start
+    mod2.module_name = 'A_ROOT_2'
+    mod2.avahi_type = '_rimres._tcp'
+    mod2.avahi_port = 12000
+    mod2.avahi_ttl = 0
+        #port_driven.   #<-default 
+    add_default_logger
 end

@@ -172,7 +172,7 @@ friend class ModuleBase;
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
      */
-    virtual bool processMessage(std::string& message){return true;};
+    virtual bool processMessage(std::string& message);
 
     ////////////////////////////////RPC-METHODS//////////////////////////
     /**
@@ -208,11 +208,13 @@ friend class ModuleBase;
     dfki::communication::ServiceDiscovery* serviceDiscovery;
     orogen_transports::TypelibMarshallerBase* transport;
     ModuleID modID; /// Contains the environment ID, the type and the name of the module.
+    sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
 
  private:
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
      * Callback function adds the newly discovered service if its unknown.
+     * It is not allowed that two or more modules connect to each other simultaneously.
      * Must not be overwritten, use serviceAdded_() instead.
      */
 	void serviceAdded(dfki::communication::ServiceEvent se);
@@ -225,6 +227,7 @@ friend class ModuleBase;
 
     ////////////////////////////////PARAMETER///////////////////////////
     DISALLOW_COPY_AND_ASSIGN(Module);
+    int counter_test;
 };
 } // namespace modules
 

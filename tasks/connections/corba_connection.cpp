@@ -62,7 +62,7 @@ bool CorbaConnection::connect() //virtual
         return false;
     }
 
-    if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const &)>
+    if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&)>
             ("rpcCreateConnectPorts"))
     {
         throw ConnectionException("Receiver ports could not be created/connected.");
@@ -201,7 +201,7 @@ bool CorbaConnection::createConnectPortsOnReceiver(std::string function_name)
 bool CorbaConnection::connectPorts()
 {
     connected = false;
-    if(!portsCreated || !proxyCreated || !receiverConnected)
+    if(!portsCreated || !proxyCreated)
         return false;
 
     // Get pointer to the input port of the receiver.

@@ -117,7 +117,7 @@ bool FipaMessage::createACLMessage()
         delete aclMSG;
         aclMSG = NULL;
     }
-    if(getEntry("PERFORMATIVES").size() == 0)
+    if(getEntry("PERFORMATIVE").size() == 0)
         aclMSG = new fa::ACLMessage();
     else
         aclMSG = new fa::ACLMessage(fa::INFORM);

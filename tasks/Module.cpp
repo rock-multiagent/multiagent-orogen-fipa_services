@@ -30,8 +30,12 @@ Module::Module(std::string const& name) : ModuleBase(name),
         loggerNames(),
         serviceDiscovery(NULL),
         transport(NULL),
-        modID(name)
+        modID(name),
+        connectSem(NULL)
 {
+    connectSem = new sem_t();
+    sem_init(connectSem, 1, 1);
+    counter_test=0;
 }
 
 Module::~Module()
@@ -52,6 +56,8 @@ Module::~Module()
     connections.clear();
     // The mts-connection has been deleted as well.
     mta = NULL;
+    delete connectSem;
+    connectSem = NULL;
     stop();
     // See 'cleanupHook()'.
 }
@@ -64,15 +70,22 @@ bool Module::configureHook()
     {
         RTT::log().setLogLevel( RTT::Logger::Info );
     }
+
+    // If configure properties are empty, module will be stopped.
+    if(_module_name.get().empty() || _avahi_type.get().empty() || _avahi_port.get() == 0)
+    {
+        globalLog(RTT::Info, "Properties are not set, module will be stopped.");
+        return false;
+    }
     // Set name of this task context.
     this->setName(_module_name.get());
-
     // Split and store module ID to envID, avahi type and name.
     modID = ModuleID(_module_name.get());
 
     // Configure SD.
     dc::ServiceConfiguration sc(_module_name.get(), _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
+    sc.setDescription("IOR", RTT::Corba::ControlTaskServer::getIOR(this));
     serviceDiscovery = new dc::ServiceDiscovery();
     // conf.stringlist.push_back("Type=Basis");
     // Add calback functions.
@@ -86,8 +99,8 @@ bool Module::configureHook()
     } catch(exception& e) {
         globalLog(RTT::Error, "%s", e.what());
     }
-    globalLog(RTT::Info, "Started service '%s' with avahi-type '%s'",
-    _module_name.get().c_str(), _avahi_type.get().c_str());
+    globalLog(RTT::Info, "Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
+        _module_name.get().c_str(), _avahi_type.get().c_str(), _avahi_port.get(), _avahi_ttl.get());
 
     // Required?
     // Getting information for the type of the ports (fipa::BitefficientMessage)
@@ -123,8 +136,8 @@ void Module::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
         fipa::BitefficientMessage message;
         RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
         ((RTT::InputPort<fipa::BitefficientMessage>*)read_port)->read(message);
-        globalLog(RTT::Info, "Received new message on port %s of size %d", (*it)->getName().c_str(),
-                message.size());
+        globalLog(RTT::Info, "Received new message on port %s of size %d, %d", (*it)->getName().c_str(),
+                message.size(),counter_test++);
         std::string msg_str = message.toString();
         processMessage(msg_str);
     }
@@ -171,15 +184,47 @@ void Module::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
     log(log_type) << msg << RTT::endlog();
 }
 
+bool Module::processMessage(std::string& message)
+{
+    try
+    {
+        // TEST: Send message to all connected modules
+        fipa.decode(message);
+        // Set new receiver.
+        std::map<std::string, ConnectionInterface*>::iterator it;
+        for(it=connections.begin(); it != connections.end(); ++it)
+        {
+            fipa.clear("RECEIVER");
+            fipa.setMessage("RECEIVER " + it->second->getReceiverName());
+            std::string send_msg = fipa.encode();
+            it->second->send(send_msg);
+        }
+    }
+    catch(ConnectionException& e)
+    {
+        log(RTT::Warning) << "ConnectionException: " << e.what() << RTT::endlog();
+        return false;
+    }
+    catch(MessageException& e)
+    {
+        log(RTT::Warning) << "MessageException: " << e.what() << RTT::endlog();
+        return false;
+    }
+    
+    return true;
+}
+
 ////////////////////////////////RPC-METHODS//////////////////////////
 bool Module::rpcCreateConnectPorts(std::string const& remote_name, 
         std::string const& remote_ior)
 {
+    //sem_wait(connectSem);   
     // Return true if the connection have already be established.
     if(connections.find(remote_name) != connections.end())
     {
-        globalLog(RTT::Warning, "Connection to '%s' already established", 
+        globalLog(RTT::Warning, "(RPC) Connection to '%s' already established", 
             remote_name.c_str());
+        //sem_post(connectSem);
         return true;
     }
     
@@ -189,27 +234,38 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     try {
         con->connectLocal();
     } catch(ConnectionException& e) {
-        globalLog(RTT::Error, "Connection to '%s' could not be established.", remote_name.c_str());
+        globalLog(RTT::Error, "(RPC) Connection to '%s' could not be established: %s", 
+                remote_name.c_str(), e.what());
+        //sem_post(connectSem);
         return false;
     }
 
     connections.insert(pair<std::string, CorbaConnection*>(remote_name,con));
-    globalLog(RTT::Info, "Connected to '%s'", remote_name.c_str());
+    globalLog(RTT::Info, "(RPC) Connected to '%s'", remote_name.c_str());
+    //sem_post(connectSem);
     return true;
 }
 
 ////////////////////////////////CALLBACKS///////////////////////////
 void Module::serviceAdded_(dfki::communication::ServiceEvent& se)
 {
+    //sem_wait(connectSem) ;
     std::string id = se.getServiceDescription().getName();
+
+    // Do not connect to yourself.
+    if(id == this->getName())
+    {
+        return;
+    }
 
     std::map<std::string, ConnectionInterface*>::iterator it;
     it = connections.find(id);
 
-    if(it == connections.end())
+    if(it != connections.end())
     {
         log(RTT::Info) << "Connection to " << id << " already established." 
                 << RTT::endlog();
+        //sem_post(connectSem);
         return;
     }
 
@@ -217,16 +273,19 @@ void Module::serviceAdded_(dfki::communication::ServiceEvent& se)
     std::string remoteIOR = se.getServiceDescription().getDescription("IOR");
 
     // Connect to the first appropriate MTA (same environment ids).  
-    if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
+    // TEST: Connect to A_ROOT_1
+    if(id == "A_ROOT_1"/*mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())*/)
     {
         CorbaConnection* cc = new CorbaConnection(this, id, remoteIOR);
         try{
             cc->connect();
         } catch(ConnectionException& e) {
             log(RTT::Info) << "ConnectionException: " << e.what() << RTT::endlog();
+            //sem_post(connectSem);
             return;        
         }
         connections.insert(pair<std::string, CorbaConnection*>(id,cc));
+        log(RTT::Info) << "Connected to " << id << RTT::endlog();
     }
 
     // Build up a list with all the logging-module-IDs.  
@@ -234,6 +293,7 @@ void Module::serviceAdded_(dfki::communication::ServiceEvent& se)
     {
         loggerNames.push_back(id);
     }
+    //sem_post(connectSem);
 }
 
 void Module::serviceRemoved_(dfki::communication::ServiceEvent& se)
@@ -270,6 +330,8 @@ void Module::serviceRemoved_(dfki::communication::ServiceEvent& se)
     // Disconnect and delete.
     it->second->disconnect();
     connections.erase(it);
+
+    log(RTT::Info) << "Disconnected from " << id << RTT::endlog();
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -277,11 +339,13 @@ void Module::serviceRemoved_(dfki::communication::ServiceEvent& se)
 ////////////////////////////////////////////////////////////////////
 void Module::serviceAdded(dfki::communication::ServiceEvent se)
 {
+    globalLog(RTT::Info, "New module %s added", se.getServiceDescription().getName().c_str());
     serviceAdded_(se);
 }
 
 void Module::serviceRemoved(dfki::communication::ServiceEvent se)
 {
+    globalLog(RTT::Info, "Module %s removed", se.getServiceDescription().getName().c_str());
     serviceRemoved_(se);
 }
 } // namespace modules
