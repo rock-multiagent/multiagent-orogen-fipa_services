@@ -51,7 +51,7 @@ deployment "root_module" do
     #enable_corba
     mod = task("root_module", "root::Module").
         priority('10').
-        periodic('0.01')
+        periodic('0.001')
         #start
     mod.module_name = 'A_ROOT_1'
     mod.avahi_type = '_rimres._tcp'
@@ -65,7 +65,7 @@ deployment "root_module_" do
     #enable_corba
     mod2 = task("root_module_", "root::Module").
         priority('10').
-        periodic('0.01')
+        periodic('0.001')
         #start
     mod2.module_name = 'A_ROOT_2'
     mod2.avahi_type = '_rimres._tcp'

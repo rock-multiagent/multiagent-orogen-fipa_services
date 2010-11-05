@@ -118,9 +118,9 @@ bool FipaMessage::createACLMessage()
         aclMSG = NULL;
     }
     if(getEntry("PERFORMATIVE").size() == 0)
-        aclMSG = new fa::ACLMessage();
-    else
         aclMSG = new fa::ACLMessage(fa::INFORM);
+    else
+        aclMSG = new fa::ACLMessage();
 
     // Runs through the parameters and fill the ACLMessage.
     std::map<std::string, MessageParameter>::iterator it;

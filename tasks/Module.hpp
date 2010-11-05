@@ -134,7 +134,7 @@ friend class ModuleBase;
     /** This hook is called by Orocos when the state machine transitions
      * from Running to Stopped after stop() has been called.
      */
-    void stopHook(){};
+    void stopHook();
 
     /** 
      * This hook is called by Orocos when the component is in the Running
@@ -227,7 +227,11 @@ friend class ModuleBase;
 
     ////////////////////////////////PARAMETER///////////////////////////
     DISALLOW_COPY_AND_ASSIGN(Module);
+
+    //TEST START
     int counter_test;
+    bool connected_test;
+    //TEST END
 };
 } // namespace modules
 
