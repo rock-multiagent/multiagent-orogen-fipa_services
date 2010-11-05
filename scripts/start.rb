@@ -39,12 +39,12 @@ end
 	performative = "inform"
     msg = FipaMessage.new
     msg.setPerformative(performative)
-    msg.setContent("aasgashashagshagshahsghagshaghsgahsahgsahgshagshghsgahsgahsahgshgahsgahsahsgahgshagshagshagshaghsgahsgahsgahgsahgshagshagshgahsgahsgahsgahsg")
+    msg.setContent("Test message")
     in_port = root_module.inputPortMTS
     writer = in_port.writer
 
-       puts 'Schreibe '
-       writer.write(msg)
+    puts 'Schreibe '
+    writer.write(msg)
 
     while true
          #puts 'Schreibe '

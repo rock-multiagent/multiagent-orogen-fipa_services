@@ -35,11 +35,6 @@ Module::Module(std::string const& name) : ModuleBase(name),
 {
     connectSem = new sem_t();
     sem_init(connectSem, 1, 1);
-
-    // TEST START
-    connected_test = false;
-    counter_test=0;
-    // TEST END
 }
 
 Module::~Module()
@@ -143,8 +138,8 @@ void Module::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
         fipa::BitefficientMessage message;
         RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
         ((RTT::InputPort<fipa::BitefficientMessage>*)read_port)->read(message);
-        globalLog(RTT::Info, "Received new message on port %s of size %d, %d", (*it)->getName().c_str(),
-                message.size(),counter_test++);
+        globalLog(RTT::Info, "Received new message on port %s of size %d", (*it)->getName().c_str(),
+                message.size());
         std::string msg_str = message.toString();
         processMessage(msg_str);
     }
@@ -193,18 +188,6 @@ void Module::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
 
 bool Module::processMessage(std::string& message)
 {
-    // TEST START
- fipa.decode(message);
- //fipa.clear("RECEIVER");
-   //         fipa.setMessage("RECEIVER Mr.Thomas");
-            std::cout << "Message: " << fipa.getEntry("CONTENT")[0] << std::endl;
-            std::string send_msg = fipa.encode();
-            //it->second->send(send_msg);
-            _outputPortMTS.write(send_msg);
-    //sleep(1);
-return true;
-    // TEST END
-
     try
     {
         // TEST: Send message to all connected modules
@@ -216,7 +199,7 @@ return true;
             fipa.clear("RECEIVER");
             fipa.setMessage("RECEIVER " + it->second->getReceiverName());
             std::string send_msg = fipa.encode();
-            //it->second->send(send_msg);
+            it->second->send(send_msg);
             _outputPortMTS.write(send_msg);
         }
     }
@@ -269,34 +252,6 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
 ////////////////////////////////CALLBACKS///////////////////////////
 void Module::serviceAdded_(dfki::communication::ServiceEvent& se)
 {
-    //TEST START
-    // Do not connect to yourself.
-    std::string id2 = se.getServiceDescription().getName();
-    if(id2 == this->getName() || connected_test)
-    {
-        return;
-    }
-    // Create Control Task Proxy.
-    std::string remoteIOR_ = se.getServiceDescription().getDescription("IOR");
-    RTT::Corba::ControlTaskProxy::InitOrb(0, 0);
-    RTT::Corba::ControlTaskProxy* controlTaskProxy = RTT::Corba::ControlTaskProxy::
-            Create(remoteIOR_, remoteIOR_.substr(0,3) == "IOR");
-
-    // Creating a one-directional connection from task_context to the peer. 
-    this->addPeer(controlTaskProxy);
-    RTT::InputPortInterface* remoteinputport = NULL;
-    remoteinputport = (RTT::InputPortInterface*)controlTaskProxy->ports()->
-            getPort("inputPortMTS");
-
-    // Connect the output port of the sender to the input port of the receiver.
-    // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
-    // true=pull(problem here) false=push)
-    //_outputPortMTS.connectTo(*remoteinputport, RTT::ConnPolicy::buffer(200, RTT::ConnPolicy::LOCKED, false, false));
-_outputPortMTS.connectTo(*remoteinputport, RTT::ConnPolicy::data());
-    connected_test = true;
-    return;  
-    //TEST END
-  
     //sem_wait(connectSem) ;
     std::string id = se.getServiceDescription().getName();
 

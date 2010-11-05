@@ -227,11 +227,6 @@ friend class ModuleBase;
 
     ////////////////////////////////PARAMETER///////////////////////////
     DISALLOW_COPY_AND_ASSIGN(Module);
-
-    //TEST START
-    int counter_test;
-    bool connected_test;
-    //TEST END
 };
 } // namespace modules
 
