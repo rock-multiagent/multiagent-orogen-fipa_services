@@ -1,4 +1,4 @@
-require 'FipaMessage'
+require 'fipa-message'
 
 require 'orocos'
 include Orocos

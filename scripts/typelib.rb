@@ -2,7 +2,7 @@
 # It allows to send fipa messages from ruby to orocos ports of type
 # /fipa/BitefficientMessage
 begin 
-    require 'FipaMessage'
+    require 'fipa-message'
 	Typelib.convert_to_ruby '/fipa/BitefficientMessage' do |value|
 	  	# from_byte_array is defined in the rice extension of FipaMessage
 		FipaMessage.from_byte_array(value.vec.to_a)
@@ -20,7 +20,7 @@ begin
 	end
 
 rescue LoadError
-	STDERR.puts "The FipaMessage library is not present, I am thus unable to support ruby conversion for fipa messages"
+	STDERR.puts "The fipa-message library is not present, I am thus unable to support ruby conversion for fipa messages"
 end
 
 
