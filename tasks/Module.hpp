@@ -43,6 +43,8 @@
 #include <set>
 #include <string>
 
+#include <boost/utility.hpp>
+
 #include <rtt/Ports.hpp>
 #include <service-discovery/ServiceDiscovery.h>
 
@@ -76,7 +78,7 @@ class ConnectionInterface;
  * Connects its MTA automatically and allows to create the connection
  * to other modules dynamically.
  */
-class Module : public ModuleBase
+class Module : public ModuleBase, boost::noncopyable
 {
 friend class ModuleBase;
  public:
@@ -115,7 +117,7 @@ friend class ModuleBase;
      *   end
      */
     bool configureHook();
-
+Module(std::string const& name = "root::Module")
     /** This hook is called by Orocos when the component is in the
      * RunTimeError state, at each activity step. See the discussion in
      * updateHook() about triggering options.
@@ -211,6 +213,10 @@ friend class ModuleBase;
     sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
 
  private:
+    /**
+     * Use Module(std::string const& name) instead.
+     */
+    Module();
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
      * Callback function adds the newly discovered service if its unknown.
@@ -224,9 +230,6 @@ friend class ModuleBase;
      * Must not be overwritten, use serviceRemoved_() instead.
      */
 	void serviceRemoved(dfki::communication::ServiceEvent se);
-
-    ////////////////////////////////PARAMETER///////////////////////////
-    DISALLOW_COPY_AND_ASSIGN(Module);
 };
 } // namespace modules
 

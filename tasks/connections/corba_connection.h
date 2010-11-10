@@ -27,8 +27,8 @@
 
 #include <rtt/Ports.hpp>
 
-#include "connection_interface.h"
-#include "fipa_msg_object.h"
+#include "connections/connection_interface.h"
+#include "connections/fipa_msg_object.h"
 
 /* Forward Declaration. */
 namespace RTT{

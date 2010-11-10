@@ -1,10 +1,16 @@
+set(TASKLIB_PKG_INCLUDE_DIRS -I${CMAKE_INSTALL_PREFIX}/include/orocos/root)
 include(rootTaskLib)
 
 SET(HEADERS
     module_id.h
+)
+SET(CON_HEADERS
     connections/connection_interface.h
     connections/client_socket_connection.h
     connections/corba_connection.h
+    connections/fipa_msg_object.h
+)
+SET(MSG_HEADERS
     messages/message_interface.h
     messages/fipa_message.h
 )
@@ -34,8 +40,13 @@ SET_TARGET_PROPERTIES(${ROOT_TASKLIB_NAME}
 INSTALL(TARGETS ${ROOT_TASKLIB_NAME}
     RUNTIME DESTINATION bin
     LIBRARY DESTINATION lib/orocos)
+message (ROOT_TASKLIB_HEADERS ${ROOT_TASKLIB_HEADERS})
 
 INSTALL(FILES ${ROOT_TASKLIB_HEADERS}
     DESTINATION include/orocos/root)
+INSTALL(FILES ${CON_HEADERS}
+    DESTINATION include/orocos/root/connections)
+INSTALL(FILES ${MSG_HEADERS}
+    DESTINATION include/orocos/root/messages)
 
 

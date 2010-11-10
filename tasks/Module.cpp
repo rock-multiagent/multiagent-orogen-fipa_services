@@ -340,6 +340,8 @@ void Module::serviceRemoved_(dfki::communication::ServiceEvent& se)
 ////////////////////////////////////////////////////////////////////
 //                           PRIVATE                              //
 ////////////////////////////////////////////////////////////////////
+Module::Module() : ModuleBase("root::Module"), modID("root::Module"){}
+
 void Module::serviceAdded(dfki::communication::ServiceEvent se)
 {
     globalLog(RTT::Info, "New module %s added", se.getServiceDescription().getName().c_str());

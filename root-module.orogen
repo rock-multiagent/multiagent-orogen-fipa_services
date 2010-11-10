@@ -9,7 +9,7 @@ version '0.2'
 version '0.3'
 # Based on http://www.orocos.org/dfki/orogen.
 
-import_types_from "tasks/fipa_msg_object.h"
+import_types_from "tasks/connections/fipa_msg_object.h"
 
 using_library "message-generator"
 using_library "message-parser"
