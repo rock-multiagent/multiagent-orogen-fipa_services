@@ -117,7 +117,7 @@ friend class ModuleBase;
      *   end
      */
     bool configureHook();
-Module(std::string const& name = "root::Module")
+
     /** This hook is called by Orocos when the component is in the
      * RunTimeError state, at each activity step. See the discussion in
      * updateHook() about triggering options.
@@ -173,6 +173,8 @@ Module(std::string const& name = "root::Module")
     /**
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
+     * Without being overwritten, the module will send the message back to
+     * the sender.
      */
     virtual bool processMessage(std::string& message);
 

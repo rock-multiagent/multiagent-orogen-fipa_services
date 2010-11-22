@@ -188,20 +188,21 @@ void Module::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
 
 bool Module::processMessage(std::string& message)
 {
+    // If not overwritten, just send all messages back to the sender.
+    if(mta == NULL)
+    {
+        log(RTT::Warning) << "No MTA available." << RTT::endlog();
+        return false;
+    }
     try
     {
-        // TEST: Send message to all connected modules
         fipa.decode(message);
-        // Set new receiver.
-        std::map<std::string, ConnectionInterface*>::iterator it;
-        for(it=connections.begin(); it != connections.end(); ++it)
-        {
-            fipa.clear("RECEIVER");
-            fipa.setMessage("RECEIVER " + it->second->getReceiverName());
-            std::string send_msg = fipa.encode();
-            it->second->send(send_msg);
-            _outputPortMTS.write(send_msg);
-        }
+        // Set new sender and receiver.
+        std::string sender = fipa.getEntry("SENDER").at(0);
+        fipa.clear("RECEIVER SENDER");
+        fipa.setMessage("RECEIVER "+sender);
+        fipa.setMessage("SENDER "+modID.getID());
+        mta->send(fipa.encode());
     }
     catch(ConnectionException& e)
     {
@@ -277,7 +278,7 @@ void Module::serviceAdded_(dfki::communication::ServiceEvent& se)
 
     // Connect to the first appropriate MTA (same environment ids).  
     // TEST: Connect to A_ROOT_1
-    if(id == "A_ROOT_1"/*mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())*/)
+    if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
     {
         CorbaConnection* cc = new CorbaConnection(this, id, remoteIOR);
         try{
