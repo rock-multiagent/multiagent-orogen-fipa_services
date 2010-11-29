@@ -48,7 +48,6 @@ task_context "Module" do
 end
 
 deployment "root_module" do
-    #enable_corba
     mod = task("root_module", "root::Module").
         priority('10').
         periodic('0.001')
@@ -57,20 +56,6 @@ deployment "root_module" do
     mod.avahi_type = '_rimres._tcp'
     mod.avahi_port = 12000
     mod.avahi_ttl = 0
-        #port_driven.   #<-default 
-    add_default_logger
-end
 
-deployment "root_module_" do
-    #enable_corba
-    mod2 = task("root_module_", "root::Module").
-        priority('10').
-        periodic('0.001')
-        #start
-    mod2.module_name = 'A_ROOT_2'
-    mod2.avahi_type = '_rimres._tcp'
-    mod2.avahi_port = 12000
-    mod2.avahi_ttl = 0
-        #port_driven.   #<-default 
     add_default_logger
 end

@@ -197,12 +197,17 @@ bool Module::processMessage(std::string& message)
     try
     {
         fipa.decode(message);
+        std::vector<std::string>& content = fipa.getEntry("CONTENT");
+        if(content.size())
+            log(RTT::Info) << "Received: " << content.at(0) << RTT::endlog();
         // Set new sender and receiver.
+        /*
         std::string sender = fipa.getEntry("SENDER").at(0);
         fipa.clear("RECEIVER SENDER");
         fipa.setMessage("RECEIVER "+sender);
         fipa.setMessage("SENDER "+modID.getID());
         mta->send(fipa.encode());
+        */
     }
     catch(ConnectionException& e)
     {
@@ -251,108 +256,102 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
 }
 
 ////////////////////////////////CALLBACKS///////////////////////////
-void Module::serviceAdded_(dfki::communication::ServiceEvent& se)
+void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
 {
-    //sem_wait(connectSem) ;
-    std::string id = se.getServiceDescription().getName();
-
-    // Do not connect to yourself.
-    if(id == this->getName())
-    {
-        return;
-    }
-
-    std::map<std::string, ConnectionInterface*>::iterator it;
-    it = connections.find(id);
-
-    if(it != connections.end())
-    {
-        log(RTT::Info) << "Connection to " << id << " already established." 
-                << RTT::endlog();
-        //sem_post(connectSem);
-        return;
-    }
-
-    ModuleID mod(id);
-    std::string remoteIOR = se.getServiceDescription().getDescription("IOR");
+    ModuleID mod(remote_id);
 
     // Connect to the first appropriate MTA (same environment ids).  
-    // TEST: Connect to A_ROOT_1
     if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
     {
-        CorbaConnection* cc = new CorbaConnection(this, id, remoteIOR);
+        CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
         try{
             cc->connect();
         } catch(ConnectionException& e) {
-            log(RTT::Info) << "ConnectionException: " << e.what() << RTT::endlog();
-            //sem_post(connectSem);
+            globalLog(RTT::Info, "ConnectionException: %s", e.what());
             return;        
         }
-        connections.insert(pair<std::string, CorbaConnection*>(id,cc));
-        log(RTT::Info) << "Connected to " << id << RTT::endlog();
+        connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
+        mta = cc;
+        globalLog(RTT::Info, "Connected to %s.", remote_id.c_str());
     }
-
-    // Build up a list with all the logging-module-IDs.  
-    if(mod.getType() == "LOG")
-    {
-        loggerNames.push_back(id);
-    }
-    //sem_post(connectSem);
 }
 
-void Module::serviceRemoved_(dfki::communication::ServiceEvent& se)
+void Module::serviceRemoved_(std::string& remote_id, std::string& remote_ior)
 {
-    // Do nothing if no connection is available.
-    std::string id = se.getServiceDescription().getName();
-    std::map<std::string, ConnectionInterface*>::iterator it = connections.find(id);
-    if(it == connections.end()) // No connection to 'id' available.
-        return;
-
-    ModuleID mod(id);
-
-    // If its the MTA of this module, remove shortcut.
-    if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
-    {
-        mta = NULL;
-        globalLog(RTT::Warning, "My MTA has been removed.");
-    } 
-
-    // If its a logging module, remove entry in the logger list.
-    if(mod.getType() == "LOG")
-    {
-        std::vector<std::string>::iterator it=loggerNames.begin();
-        for(; it!=loggerNames.end(); ++it)
-        {
-            if(*it == id)
-            {
-                loggerNames.erase(it);
-                break;
-            }
-        }
-    }
-
-    // Disconnect and delete.
-    it->second->disconnect();
-    connections.erase(it);
-
-    log(RTT::Info) << "Disconnected from " << id << RTT::endlog();
 }
 
 ////////////////////////////////////////////////////////////////////
 //                           PRIVATE                              //
 ////////////////////////////////////////////////////////////////////
-Module::Module() : ModuleBase("root::Module"), modID("root::Module"){}
+Module::Module() : ModuleBase("root::Module"), modID("root::Module")
+{
+}
 
 void Module::serviceAdded(dfki::communication::ServiceEvent se)
 {
-    globalLog(RTT::Info, "New module %s added", se.getServiceDescription().getName().c_str());
-    serviceAdded_(se);
+    std::string remote_id = se.getServiceDescription().getName();
+    std::string remote_ior = se.getServiceDescription().getDescription("IOR");
+    ModuleID mod(remote_id);
+    globalLog(RTT::Info, "New module %s added", remote_id.c_str());
+
+    if(remote_id == this->getName())
+    {
+        return;
+    }
+
+    // Build up a list with all the logging-module-IDs.  
+    if(mod.getType() == "LOG")
+    {
+        loggerNames.insert(remote_id);
+    }
+
+    // Do nothing if the connection has already been established.
+    std::map<std::string, ConnectionInterface*>::iterator it;
+    it = connections.find(remote_id);
+    if(it != connections.end())
+    {
+        globalLog(RTT::Info, "Connection to %s already established.",remote_id.c_str());
+        return;
+    }
+
+    serviceAdded_(remote_id, remote_ior);
 }
 
 void Module::serviceRemoved(dfki::communication::ServiceEvent se)
 {
-    globalLog(RTT::Info, "Module %s removed", se.getServiceDescription().getName().c_str());
-    serviceRemoved_(se);
+    std::string remote_id = se.getServiceDescription().getName();
+    std::string remote_ior = se.getServiceDescription().getDescription("IOR");
+    ModuleID mod(remote_id);
+    globalLog(RTT::Info, "Module %s removed", remote_id.c_str());
+
+    if(remote_id == this->getName())
+    {
+        return;
+    }
+
+    // If its a logging module, remove entry in the logger list.
+    if(mod.getType() == "LOG")
+    {
+        loggerNames.erase(remote_id);
+    }
+
+    std::map<std::string, ConnectionInterface*>::iterator it = connections.find(remote_id);
+    if(it != connections.end()) // Connection to 'remote_id' available.
+    {
+        // Disconnect and delete.
+        it->second->disconnect();
+        connections.erase(it);
+        globalLog(RTT::Info, "Disconnected from %s.", remote_id.c_str());
+
+        // If its the MTA of this module, remove shortcut.
+        if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
+        {
+            mta = NULL;
+            globalLog(RTT::Warning, "My MTA has been removed.");
+        }
+    }
+
+    serviceRemoved_(remote_id, remote_ior);
 }
 } // namespace modules
 

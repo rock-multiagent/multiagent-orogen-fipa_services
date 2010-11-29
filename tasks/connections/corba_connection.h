@@ -111,6 +111,7 @@ class CorbaConnection : public ConnectionInterface
     bool portsCreated;
     bool proxyCreated;
     bool receiverConnected; // Ports are created and output port is connected.
+    bool portsConnected;
 };
 } // namespace root
 #endif

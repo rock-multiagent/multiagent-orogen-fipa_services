@@ -40,7 +40,7 @@ namespace root
  * E.g.: <i> PERFORMATIVE inform SENDER mod1 RECEIVER START mod2 mod3 STOP </i>\n
  * At the moment just the name-field of the AgentID is used. The field resolver
  * for example should get the MTA of the agent.\n
- * REPLY-BY format: 2010-12-23T23:12:45:100.
+ * REPLY-BY format: 2010-12-23T23:12:45:100.\n
  */
 class FipaMessage : public MessageInterface
 {
@@ -50,6 +50,8 @@ class FipaMessage : public MessageInterface
     /**
      * Decodes the message and clears and refills the parameter-map.
      * Can throw a MessageException.
+     * The complete content string is stored to the
+     * first vector entry.
      */ 
     void decode(std::string const& message); // virtual
 
@@ -67,6 +69,9 @@ class FipaMessage : public MessageInterface
 
     bool setParameter(std::string const& parameter, 
             std::vector<std::string> const& entries);
+
+    bool setParameter(std::string const& parameter,
+            std::set<std::string> const& entries);
 
  private:
     /**

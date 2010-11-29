@@ -19,7 +19,8 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
         outputPort(NULL),
         portsCreated(false),
         proxyCreated(false),
-        receiverConnected(false)
+        receiverConnected(false),
+        portsConnected(false)
 {
     receiverName = receiver;
     connected = false;
@@ -31,25 +32,14 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
             
 CorbaConnection::~CorbaConnection()
 {
-    if(controlTaskProxy)
-    {
-        delete controlTaskProxy;
-        controlTaskProxy = NULL;
-    }
-    if(inputPort)
-    {
-        delete inputPort;
-        inputPort = NULL;
-    }
-    if(outputPort)
-    {
-        delete outputPort;
-        outputPort = NULL;
-    } 
+    disconnect();
 }
 
 bool CorbaConnection::connect() //virtual
 {
+    if(connected)
+        return true;
+
     if(!createPorts())
     {
         throw ConnectionException("Sender ports could not be created.");
@@ -74,11 +64,16 @@ bool CorbaConnection::connect() //virtual
         throw ConnectionException("Sender ports could not be connected.");
         return false;
     }
+
+    connected = true;
     return true;
 }
 
 bool CorbaConnection::connectLocal() //virtual
 {
+    if(connected)
+        return true;
+
     if(!createPorts())
     {
         throw ConnectionException("Sender ports could not be created.");
@@ -96,13 +91,43 @@ bool CorbaConnection::connectLocal() //virtual
         throw ConnectionException("Sender ports could not be connected.");
         return false;
     }
+    connected = true;
     return true;
 }
 
-bool CorbaConnection::disconnect(){return true;}; //virtual
+bool CorbaConnection::disconnect()
+{
+    if(controlTaskProxy)
+    {
+        taskContextSender->removePeer(receiverIOR);
+        delete controlTaskProxy;
+        controlTaskProxy = NULL;
+    }
+    if(inputPort)
+    {
+        taskContextSender->ports()->removePort(inputPortName);
+        delete inputPort;
+        inputPort = NULL;
+    }
+    if(outputPort)
+    {
+        taskContextSender->ports()->removePort(outputPortName);
+        delete outputPort;
+        outputPort = NULL;
+    }
+    
+    connected = false;
+    return true;
+}
 
 std::string CorbaConnection::read() //virtual
 {
+    if(!connected)
+    {
+        log(RTT::Info) << "Data can not be read, no connection available. " << 
+            RTT::endlog();
+        return false;
+    }
     fipa::BitefficientMessage msg;
     if(!inputPort->read(msg))
     {
@@ -132,7 +157,7 @@ bool CorbaConnection::createPorts()
 {
     // Do nothing if the ports have already been created.
     if(portsCreated)
-        return false;
+        return true;
 
     inputPort = new RTT::InputPort<fipa::BitefficientMessage>(inputPortName);
     outputPort = new RTT::OutputPort<fipa::BitefficientMessage>(outputPortName);
@@ -219,7 +244,7 @@ bool CorbaConnection::connectPorts()
             RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
         return false;
 
-    connected = true;
+    portsConnected = true;
     return true;
 }
 } // namespace root

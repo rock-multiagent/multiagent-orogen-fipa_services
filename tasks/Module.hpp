@@ -189,13 +189,14 @@ friend class ModuleBase;
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
      * Callback function adds the newly discovered service if its unknown.
+     * Default behaviour: Connects to the first appropriate (same environment) MTA.
      */
-	virtual void serviceAdded_(dfki::communication::ServiceEvent& se);
+	virtual void serviceAdded_(std::string& remote_id, std::string& remote_ior);
 
     /**
      * Callback function removes the service from the list if it disappears.
      */
-	virtual void serviceRemoved_(dfki::communication::ServiceEvent& se);
+	virtual void serviceRemoved_(std::string& remote_id, std::string& remote_ior);
 
     ////////////////////////////////PARAMETER///////////////////////////
     FipaMessage fipa; /// Fipa message generator.
@@ -205,7 +206,7 @@ friend class ModuleBase;
      * Use 'mta != NULL' to check whether fipa messages could be sent.
      */
     ConnectionInterface* mta;
-    std::vector<std::string> loggerNames; // All active logger modules.
+    std::set<std::string> loggerNames; // All active logger modules.
     /**
      * Used to publish and collect services (modules).
      */
@@ -222,7 +223,6 @@ friend class ModuleBase;
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
      * Callback function adds the newly discovered service if its unknown.
-     * It is not allowed that two or more modules connect to each other simultaneously.
      * Must not be overwritten, use serviceAdded_() instead.
      */
 	void serviceAdded(dfki::communication::ServiceEvent se);

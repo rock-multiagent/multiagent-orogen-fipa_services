@@ -50,6 +50,9 @@ void FipaMessage::decode(std::string const& message)
     for(unsigned int i=0; i<agent_ids.size(); i++)
         it->second.addEntry(agent_ids[i].getName());    
 
+    if(!(entry = aclmsg.getContent()).empty()) 
+        parameters.find("CONTENT")->second.addEntry(entry);
+    /*
     it = parameters.find("CONTENT");
     std::string content = aclmsg.getContent();
     typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
@@ -59,6 +62,7 @@ void FipaMessage::decode(std::string const& message)
     {
         it->second.addEntry(*tok_iter);
     }
+    */
 
     if(!(entry = aclmsg.getLanguage()).empty()) 
         parameters.find("LANGUAGE")->second.addEntry(entry);
@@ -104,6 +108,18 @@ bool FipaMessage::setParameter(std::string const& parameter,
     } else {
         return false;
     }
+}
+
+bool FipaMessage::setParameter(std::string const& parameter,
+        std::set<std::string> const& entries)
+{
+    std::vector<std::string> entries_vector;
+    std::set<std::string>::iterator it_input = entries.begin();
+    for(it_input=entries.begin(); it_input != entries.end(); it_input++)
+    {
+        entries_vector.push_back(*it_input);
+    }
+    return setParameter(parameter, entries_vector);
 }
 
 ////////////////////////////////////////////////////////////////////
