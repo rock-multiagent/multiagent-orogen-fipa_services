@@ -200,14 +200,19 @@ bool Module::processMessage(std::string& message)
         std::vector<std::string>& content = fipa.getEntry("CONTENT");
         if(content.size())
             log(RTT::Info) << "Received: " << content.at(0) << RTT::endlog();
-        // Set new sender and receiver.
-        /*
-        std::string sender = fipa.getEntry("SENDER").at(0);
-        fipa.clear("RECEIVER SENDER");
-        fipa.setMessage("RECEIVER "+sender);
-        fipa.setMessage("SENDER "+modID.getID());
-        mta->send(fipa.encode());
-        */
+        
+        // Send answer if a sender has been defined.
+        std::vector<std::string>& sender_vec = fipa.getEntry("SENDER");
+        if(sender_vec.size())
+        {
+            std::string sender = sender_vec.at(0);
+            std::cout << "NEW SENDER " << modID.getID() << " NEW RECEIVER " << sender << std::endl; 
+            fipa.clear("RECEIVER SENDER");
+            fipa.setMessage("RECEIVER "+sender);
+            fipa.setMessage("SENDER "+modID.getID());
+            std::string msg = fipa.encode();
+            mta->send(msg);
+        }
     }
     catch(ConnectionException& e)
     {
