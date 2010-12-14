@@ -6,9 +6,10 @@
   <url>http://</url>
   <logo>http://</logo>
   <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
+  <depend package="base/types" />
   <depend package="boost" />
-  <depend package="framework/service-discovery" />
-  <depend package="ruby/fipa-message" />
+  <depend package="communication/service-discovery" />
+ <!-- <depend package="ruby/fipa-message" /> -->
   <!--
   <depend package="sigc" />
   <depend package="orocos/logger" />

@@ -1,8 +1,9 @@
 #include "corba_connection.h"
 
 #include <rtt/TaskContext.hpp>
-#include <rtt/corba/ControlTaskServer.hpp>
-#include <rtt/corba/ControlTaskProxy.hpp>
+#include <rtt/transports/corba/TaskContextServer.hpp>
+#include <rtt/transports/corba/TaskContextProxy.hpp>
+#include <rtt/internal/RemoteOperationCaller.hpp>
 
 namespace root
 {
@@ -25,7 +26,7 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
     receiverName = receiver;
     connected = false;
     senderName = sender->getName();
-    senderIOR = RTT::Corba::ControlTaskServer::getIOR(sender);
+    senderIOR = RTT::corba::TaskContextServer::getIOR(sender);
     inputPortName = receiverName + "->" + senderName + "_port";    
     outputPortName = senderName + "->" + receiverName + "_port";
 }
@@ -162,12 +163,11 @@ bool CorbaConnection::createPorts()
     inputPort = new RTT::InputPort<fipa::BitefficientMessage>(inputPortName);
     outputPort = new RTT::OutputPort<fipa::BitefficientMessage>(outputPortName);
 
-    if(!taskContextSender->ports()->addEventPort(inputPort, "Input port to "+receiverName) ||
-        !taskContextSender->connectPortToEvent(inputPort)) 
-        return false;
-
-    if(!taskContextSender->ports()->addPort(outputPort, "Output port to "+receiverName))
-        return false;
+	std::string inputPortName = "Input port to "+receiverName;
+    taskContextSender->ports()->addEventPort(inputPortName,*inputPort);
+	
+	std::string outputPortName = "Output port to "+receiverName;
+    taskContextSender->ports()->addPort(outputPortName, *outputPort);
  
     portsCreated = true;
     return true;
@@ -184,8 +184,8 @@ bool CorbaConnection::createProxy()
     }
 
     // Create Control Task Proxy.
-    RTT::Corba::ControlTaskProxy::InitOrb(0, 0);
-    controlTaskProxy = RTT::Corba::ControlTaskProxy::
+    RTT::corba::TaskContextProxy::InitOrb(0, 0);
+    controlTaskProxy = RTT::corba::TaskContextProxy::
             Create(receiverIOR, receiverIOR.substr(0,3) == "IOR");
 
     // Creating a one-directional connection from task_context to the peer. 
@@ -203,9 +203,11 @@ bool CorbaConnection::createConnectPortsOnReceiver(std::string function_name)
     if(!portsCreated || !proxyCreated)
         return false;
     
-    // Get function matching the Signature and the name.
-    RTT::Method <Signature> create_receiver_ports = 
-        controlTaskProxy->methods()->getMethod<Signature>(function_name);
+	// WARNING: no typesafety any more
+	if(!controlTaskProxy->ready())
+		return false;
+
+    RTT::OperationCaller<Signature> create_receiver_ports = controlTaskProxy->getOperation(function_name);
 
     // Receiver function is ready?
     if(!create_receiver_ports.ready())
@@ -218,6 +220,7 @@ bool CorbaConnection::createConnectPortsOnReceiver(std::string function_name)
     // Refresh control task proxy to get to know the new receiver ports.
     if(!createProxy())
         return false;
+	
 
     receiverConnected = true;
     return true;
@@ -230,8 +233,8 @@ bool CorbaConnection::connectPorts()
         return false;
 
     // Get pointer to the input port of the receiver.
-    RTT::InputPortInterface* remoteinputport = NULL;
-    remoteinputport = (RTT::InputPortInterface*)controlTaskProxy->ports()->
+    RTT::base::InputPortInterface* remoteinputport = NULL;
+    remoteinputport = (RTT::base::InputPortInterface*)controlTaskProxy->ports()->
             getPort(outputPortName);
 
     if(remoteinputport == NULL)
@@ -240,7 +243,7 @@ bool CorbaConnection::connectPorts()
     // Connect the output port of the sender to the input port of the receiver.
     // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
     // true=pull(problem here) false=push)
-    if(!outputPort->connectTo(*remoteinputport, 
+    if(!outputPort->connectTo(remoteinputport, 
             RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
         return false;
 

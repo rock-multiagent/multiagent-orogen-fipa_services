@@ -7,16 +7,14 @@
 #include <unistd.h>
 
 #include <message-generator/ACLMessageOutputParser.h>
-#include <rtt/corba/ControlTaskProxy.hpp>
-#include <rtt/corba/ControlTaskServer.hpp>
-#include <rtt/NonPeriodicActivity.hpp>
+#include <rtt/transports/corba/TaskContextServer.hpp>
 
 #include "TypelibMarshallerBase.hpp"
 
 #include "module_id.h"
 
 namespace dc = dfki::communication;
-namespace rc = RTT::Corba;
+namespace rc = RTT::corba;
 
 namespace root
 {
@@ -76,15 +74,16 @@ bool Module::configureHook()
         globalLog(RTT::Info, "Properties are not set, module will be stopped.");
         return false;
     }
-    // Set name of this task context.
-    this->setName(_module_name.get());
-    // Split and store module ID to envID, avahi type and name.
-    modID = ModuleID(_module_name.get());
+
+	// NOTE: Setting of names of TaskContext do not work in RTT 1.X and in RTT 2.0
+	// We are using the deployment name instead, i.e. the deployment already provides
+	// the service name, i.e. instance and id correspond
+	modID = ModuleID(this->getName());
 
     // Configure SD.
-    dc::ServiceConfiguration sc(_module_name.get(), _avahi_type.get(), _avahi_port.get());
+    dc::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
-    sc.setDescription("IOR", RTT::Corba::ControlTaskServer::getIOR(this));
+    sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
     serviceDiscovery = new dc::ServiceDiscovery();
     // conf.stringlist.push_back("Type=Basis");
     // Add calback functions.
@@ -95,7 +94,7 @@ bool Module::configureHook()
     // Start SD.
     try{
         serviceDiscovery->start(sc);
-    } catch(exception& e) {
+    } catch(std::exception& e) {
         globalLog(RTT::Error, "%s", e.what());
     }
     globalLog(RTT::Info, "Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
@@ -103,7 +102,7 @@ bool Module::configureHook()
 
     // Required?
     // Getting information for the type of the ports (fipa::BitefficientMessage)
-    RTT::TypeInfo const* type = _inputPortMTS.getTypeInfo();
+    RTT::types::TypeInfo const* type = _inputPortMTS.getTypeInfo();
     transport = dynamic_cast<orogen_transports::TypelibMarshallerBase*>(
         type->getProtocol(orogen_transports::TYPELIB_MARSHALLER_ID));
     if (! transport)
@@ -129,19 +128,26 @@ void Module::stopHook()
 {
 }
 
-void Module::updateHook(std::vector<RTT::PortInterface*> const& updated_ports)
+void Module::updateHook()
 {
-    std::vector<RTT::PortInterface*>::const_iterator it;
-    // Process message of all updated ports.
-    for(it = updated_ports.begin(); it != updated_ports.end(); ++it)
+    std::vector<RTT::base::PortInterface*>::const_iterator it;
+
+	const RTT::DataFlowInterface::Ports& ports = this->ports()->getPorts();
+	for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
     { 
-        fipa::BitefficientMessage message;
-        RTT::InputPortInterface* read_port = dynamic_cast<RTT::InputPortInterface*>(*it);
-        ((RTT::InputPort<fipa::BitefficientMessage>*)read_port)->read(message);
-        globalLog(RTT::Info, "Received new message on port %s of size %d", (*it)->getName().c_str(),
-                message.size());
-        std::string msg_str = message.toString();
-        processMessage(msg_str);
+		RTT::base::InputPortInterface* read_port = dynamic_cast<RTT::base::InputPortInterface*>(*it);
+
+		fipa::BitefficientMessage message;
+		if(read_port)
+		{
+			if( ((RTT::InputPort<fipa::BitefficientMessage>*)read_port)->read(message) == RTT::NewData)
+			{
+				globalLog(RTT::Info, "Received new message on port %s of size %d",
+						(*it)->getName().c_str(), message.size());
+				std::string msg_str = message.toString();
+				processMessage(msg_str);
+			}
+		}
     }
 }
 

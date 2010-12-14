@@ -45,7 +45,6 @@
 
 #include <boost/utility.hpp>
 
-#include <rtt/Ports.hpp>
 #include <service-discovery/ServiceDiscovery.h>
 
 #include "module_id.h"
@@ -57,12 +56,6 @@
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName&);             \
     void operator=(const TypeName&)
-
-/* Forward Declaration. */
-namespace RTT
-{
-class NonPeriodicActivity;
-} // namespace RTT
 
 namespace orogen_transports {
     class TypelibMarshallerBase;
@@ -89,12 +82,6 @@ friend class ModuleBase;
      */
     Module(std::string const& name = "root::Module");
     ~Module();
-
-    ////////////////////////////////GETTER///////////////////////////////
-    inline RTT::NonPeriodicActivity* getNonPeriodicActivity()
-    {
-        return dynamic_cast< RTT::NonPeriodicActivity* >(getActivity().get());
-    }     
 
     ////////////////////////////////HOOKS////////////////////////////////
     /** This hook is called by Orocos when the state machine transitions
@@ -157,7 +144,7 @@ friend class ModuleBase;
      * Reads data and passes it to 'processMessage()'. Overwrite if you need 
      * another behaviour.
      */
-    void updateHook(std::vector<RTT::PortInterface*> const& updated_ports);
+    void updateHook();
 
  protected:
     /**

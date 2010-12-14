@@ -25,7 +25,7 @@
 
 #include <string>
 
-#include <rtt/Ports.hpp>
+#include <rtt/InputPort.hpp>
 
 #include "connections/connection_interface.h"
 #include "connections/fipa_msg_object.h"
@@ -33,8 +33,8 @@
 /* Forward Declaration. */
 namespace RTT{
     class TaskContext;
-namespace Corba {
-    class ControlTaskProxy;
+namespace corba {
+    class TaskContextProxy;
 }
 }
 
@@ -105,7 +105,7 @@ class CorbaConnection : public ConnectionInterface
     std::string outputPortName;
 
     RTT::TaskContext* taskContextSender;
-    RTT::Corba::ControlTaskProxy* controlTaskProxy;
+    RTT::corba::TaskContextProxy* controlTaskProxy;
     RTT::InputPort<fipa::BitefficientMessage>* inputPort;
     RTT::OutputPort<fipa::BitefficientMessage>* outputPort; 
     bool portsCreated;
