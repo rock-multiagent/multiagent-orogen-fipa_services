@@ -5,15 +5,17 @@ include Orocos
 
 Orocos.initialize
 
-Orocos.run 'root_module', "wait" => 100 do |p1|
+Orocos.run 'A_ROOT_1', "wait" => 100 do |p1|
 
 begin
-    root_module = p1.task 'root_module'
+    root_module = p1.task 'A_ROOT_1'
 rescue Orocos::NotFound
     print 'Deployment not found.'
     raise
 end
+    # deprecated: has no effect, use dedicate deployments instead
     root_module.module_name = 'A_ROOT_1'
+
     root_module.avahi_type = '_rimres._tcp'
     root_module.avahi_port = 12000
     root_module.avahi_ttl = 0

@@ -61,12 +61,13 @@ task_context "Module" do
 	    doc('Creates and connects additional ports.')
 end
 
-deployment "root_module" do
-    mod = task("root_module", "root::Module").
+deployment "A_ROOT_1" do
+    mod = task("A_ROOT_1", "root::Module").
         priority('10').
         periodic('0.001')
         #start
-    mod.module_name = 'A_ROOT_1'
+    # deprecated: 
+    #mod.module_name = 'A_ROOT_1'
     mod.avahi_type = '_rimres._tcp'
     mod.avahi_port = 12000
     mod.avahi_ttl = 0
