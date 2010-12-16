@@ -197,7 +197,7 @@ friend class ModuleBase;
     /**
      * Used to publish and collect services (modules).
      */
-    dfki::communication::ServiceDiscovery* serviceDiscovery;
+    rock::communication::ServiceDiscovery* serviceDiscovery;
     orogen_transports::TypelibMarshallerBase* transport;
     ModuleID modID; /// Contains the environment ID, the type and the name of the module.
     sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
@@ -212,13 +212,13 @@ friend class ModuleBase;
      * Callback function adds the newly discovered service if its unknown.
      * Must not be overwritten, use serviceAdded_() instead.
      */
-	void serviceAdded(dfki::communication::ServiceEvent se);
+	void serviceAdded(rock::communication::ServiceEvent se);
 
     /**
      * Callback function removes the service from the list if it disappears.
      * Must not be overwritten, use serviceRemoved_() instead.
      */
-	void serviceRemoved(dfki::communication::ServiceEvent se);
+	void serviceRemoved(rock::communication::ServiceEvent se);
 };
 } // namespace modules
 

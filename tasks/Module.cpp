@@ -13,7 +13,7 @@
 
 #include "module_id.h"
 
-namespace dc = dfki::communication;
+namespace roc = rock::communication;
 namespace rc = RTT::corba;
 
 namespace root
@@ -81,10 +81,10 @@ bool Module::configureHook()
 	modID = ModuleID(this->getName());
 
     // Configure SD.
-    dc::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
+    roc::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
     sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
-    serviceDiscovery = new dc::ServiceDiscovery();
+    serviceDiscovery = new roc::ServiceDiscovery();
     // conf.stringlist.push_back("Type=Basis");
     // Add calback functions.
     serviceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
@@ -298,7 +298,7 @@ Module::Module() : ModuleBase("root::Module"), modID("root::Module")
 {
 }
 
-void Module::serviceAdded(dfki::communication::ServiceEvent se)
+void Module::serviceAdded(rock::communication::ServiceEvent se)
 {
     std::string remote_id = se.getServiceDescription().getName();
     std::string remote_ior = se.getServiceDescription().getDescription("IOR");
@@ -328,7 +328,7 @@ void Module::serviceAdded(dfki::communication::ServiceEvent se)
     serviceAdded_(remote_id, remote_ior);
 }
 
-void Module::serviceRemoved(dfki::communication::ServiceEvent se)
+void Module::serviceRemoved(rock::communication::ServiceEvent se)
 {
     std::string remote_id = se.getServiceDescription().getName();
     std::string remote_ior = se.getServiceDescription().getDescription("IOR");
