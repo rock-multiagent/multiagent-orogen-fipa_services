@@ -100,7 +100,6 @@ bool Module::configureHook()
     globalLog(RTT::Info, "Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
         _module_name.get().c_str(), _avahi_type.get().c_str(), _avahi_port.get(), _avahi_ttl.get());
 
-    // Required?
     // Getting information for the type of the ports (fipa::BitefficientMessage)
     RTT::types::TypeInfo const* type = _inputPortMTS.getTypeInfo();
     transport = dynamic_cast<orogen_transports::TypelibMarshallerBase*>(
@@ -130,10 +129,9 @@ void Module::stopHook()
 
 void Module::updateHook()
 {
-    std::vector<RTT::base::PortInterface*>::const_iterator it;
+    const RTT::DataFlowInterface::Ports& ports = this->ports()->getPorts();
 
-	const RTT::DataFlowInterface::Ports& ports = this->ports()->getPorts();
-	for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
+    for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
     { 
 		RTT::base::InputPortInterface* read_port = dynamic_cast<RTT::base::InputPortInterface*>(*it);
 
@@ -147,6 +145,7 @@ void Module::updateHook()
 				std::string msg_str = message.toString();
 				processMessage(msg_str);
 			}
+
 		}
     }
 }
@@ -274,16 +273,16 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
     // Connect to the first appropriate MTA (same environment ids).  
     if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
     {
-        CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
-        try{
-            cc->connect();
-        } catch(ConnectionException& e) {
-            globalLog(RTT::Info, "ConnectionException: %s", e.what());
-            return;        
-        }
-        connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
-        mta = cc;
-        globalLog(RTT::Info, "Connected to %s.", remote_id.c_str());
+		CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
+		try{
+		    cc->connect();
+		} catch(ConnectionException& e) {
+		    globalLog(RTT::Info, "ConnectionException: %s", e.what());
+		    return;        
+		}
+		connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
+		mta = cc;
+		globalLog(RTT::Info, "Connected to %s.", remote_id.c_str());
     }
 }
 

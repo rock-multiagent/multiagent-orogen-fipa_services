@@ -163,11 +163,11 @@ bool CorbaConnection::createPorts()
     inputPort = new RTT::InputPort<fipa::BitefficientMessage>(inputPortName);
     outputPort = new RTT::OutputPort<fipa::BitefficientMessage>(outputPortName);
 
-	std::string inputPortName = "Input port to "+receiverName;
     taskContextSender->ports()->addEventPort(inputPortName,*inputPort);
+    log(RTT::Info) << "Created event port: " << inputPortName << RTT::endlog();
 	
-	std::string outputPortName = "Output port to "+receiverName;
     taskContextSender->ports()->addPort(outputPortName, *outputPort);
+    log(RTT::Info) << "Created port: " << outputPortName << RTT::endlog();
  
     portsCreated = true;
     return true;
@@ -189,7 +189,7 @@ bool CorbaConnection::createProxy()
             Create(receiverIOR, receiverIOR.substr(0,3) == "IOR");
 
     // Creating a one-directional connection from task_context to the peer. 
-    if(!taskContextSender->addPeer(controlTaskProxy))
+    if( !taskContextSender->addPeer(controlTaskProxy) )
         return false;
     
     proxyCreated = true;
@@ -211,11 +211,17 @@ bool CorbaConnection::createConnectPortsOnReceiver(std::string function_name)
 
     // Receiver function is ready?
     if(!create_receiver_ports.ready())
+    {
+	log(RTT::Info) << "Receiver port not ready. " << RTT::endlog();
         return false;
+    }
  
     // Create receiver connection.
-    if(!create_receiver_ports(senderName, senderIOR))
+    if(!create_receiver_ports.call(senderName, senderIOR))
+    {
+	log(RTT::Info) << "Receiver port creation failed. " << RTT::endlog();
         return false;
+    }
     
     // Refresh control task proxy to get to know the new receiver ports.
     if(!createProxy())
@@ -230,22 +236,32 @@ bool CorbaConnection::connectPorts()
 {
     connected = false;
     if(!portsCreated || !proxyCreated)
+    {
+	log(RTT::Info) << "Ports/Proxy not created" << RTT::endlog();
         return false;
+    }
 
     // Get pointer to the input port of the receiver.
     RTT::base::InputPortInterface* remoteinputport = NULL;
     remoteinputport = (RTT::base::InputPortInterface*)controlTaskProxy->ports()->
             getPort(outputPortName);
+    log(RTT::Info) << "Remote output port is: " << outputPortName << RTT::endlog();
 
     if(remoteinputport == NULL)
+    {
+	log(RTT::Info) << "Remote output port" << RTT::endlog();
         return false;
+    }
 
     // Connect the output port of the sender to the input port of the receiver.
     // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
     // true=pull(problem here) false=push)
     if(!outputPort->connectTo(remoteinputport, 
             RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
+    {
+	log(RTT::Info) << "Local output port could not be connected to remote input port" << RTT::endlog();
         return false;
+    }
 
     portsConnected = true;
     return true;
