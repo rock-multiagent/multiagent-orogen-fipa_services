@@ -75,13 +75,23 @@ bool Module::configureHook()
         return false;
     }
 
-	// NOTE: Setting of names of TaskContext do not work in RTT 1.X and in RTT 2.0
-	// We are using the deployment name instead, i.e. the deployment already provides
-	// the service name, i.e. instance and id correspond
-	modID = ModuleID(this->getName());
+    // NOTE: Setting of names of TaskContext do not work in RTT 1.X and in RTT 2.0
+    // We are using the deployment name instead, i.e. the deployment already provides
+    // the service name, i.e. instance and id correspond
+
+    // For disambiguation over multiple systems when using the same deployment
+    // we use the system id
+    char* systemId = getenv("FAMOS_SYSTEM_ID");
+    std::string systemIdString(systemId);
+    if(systemIdString != "")
+	    systemIdString = this->getName()+ "_" + systemIdString;
+    else
+	    systemIdString = this->getName();
+	    
+    modID = ModuleID(systemIdString);
 
     // Configure SD.
-    roc::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
+    roc::ServiceConfiguration sc(systemIdString, _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
     sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
     serviceDiscovery = new roc::ServiceDiscovery();
@@ -133,14 +143,15 @@ void Module::updateHook()
 
     for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
     { 
-		RTT::base::InputPortInterface* read_port = dynamic_cast<RTT::base::InputPortInterface*>(*it);
+		//RTT::base::InputPortInterface* read_port = dynamic_cast<RTT::base::InputPortInterface*>(*it);
+		RTT::InputPort<fipa::BitefficientMessage>* msg_port = dynamic_cast< RTT::InputPort<fipa::BitefficientMessage>* >(*it);
 
 		fipa::BitefficientMessage message;
-		if(read_port)
+		if(msg_port)
 		{
-			if( ((RTT::InputPort<fipa::BitefficientMessage>*)read_port)->read(message) == RTT::NewData)
+			if( msg_port->read(message) == RTT::NewData)
 			{
-				globalLog(RTT::Info, "Received new message on port %s of size %d",
+				globalLog(RTT::Info, "Root: Received new message on port %s of size %d",
 						(*it)->getName().c_str(), message.size());
 				std::string msg_str = message.toString();
 				processMessage(msg_str);
