@@ -69,7 +69,7 @@ bool Module::configureHook()
     }
 
     // If configure properties are empty, module will be stopped.
-    if(_module_name.get().empty() || _avahi_type.get().empty() || _avahi_port.get() == 0)
+    if(_avahi_type.get().empty() || _avahi_port.get() == 0)
     {
         globalLog(RTT::Info, "Properties are not set, module will be stopped.");
         return false;
@@ -81,17 +81,22 @@ bool Module::configureHook()
 
     // For disambiguation over multiple systems when using the same deployment
     // we use the system id
+
+    // NOTE2: The deployment name is now set to: <FAMOS_SYSTEM_ID>_<NAME> during build.
+    // E.g.: sherpa_0_ROOT01 or sherpa_0_MTA. The avahi name equivalent.
+    /*
     char* systemId = getenv("FAMOS_SYSTEM_ID");
     std::string systemIdString(systemId);
     if(systemIdString != "")
 	    systemIdString = this->getName()+ "_" + systemIdString;
     else
 	    systemIdString = this->getName();
-	    
-    modID = ModuleID(systemIdString);
+    */	  
+    std::cout << "NAME " << this->getName() << std::endl;
+    modID = ModuleID(this->getName());
 
     // Configure SD.
-    roc::ServiceConfiguration sc(systemIdString, _avahi_type.get(), _avahi_port.get());
+    roc::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
     sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
     serviceDiscovery = new roc::ServiceDiscovery();
@@ -202,6 +207,13 @@ void Module::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
     log(log_type) << msg << RTT::endlog();
 }
 
+bool Module::isConnectedTo(std::string name)
+{
+    std::map<std::string, ConnectionInterface*>::iterator it;
+    it = connections.find(name);
+    return it != connections.end();
+}
+
 bool Module::processMessage(std::string& message)
 {
     // If not overwritten, just send all messages back to the sender.
@@ -282,7 +294,7 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
     ModuleID mod(remote_id);
 
     // Connect to the first appropriate MTA (same environment ids).  
-    if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
+    if(mta == NULL && (mod.getName() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
     {
 		CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
 		try{
@@ -321,7 +333,7 @@ void Module::serviceAdded(rock::communication::ServiceEvent se)
     }
 
     // Build up a list with all the logging-module-IDs.  
-    if(mod.getType() == "LOG")
+    if(mod.getName() == "LOG")
     {
         loggerNames.insert(remote_id);
     }
@@ -351,7 +363,7 @@ void Module::serviceRemoved(rock::communication::ServiceEvent se)
     }
 
     // If its a logging module, remove entry in the logger list.
-    if(mod.getType() == "LOG")
+    if(mod.getName() == "LOG")
     {
         loggerNames.erase(remote_id);
     }
@@ -365,7 +377,7 @@ void Module::serviceRemoved(rock::communication::ServiceEvent se)
         globalLog(RTT::Info, "Disconnected from %s.", remote_id.c_str());
 
         // If its the MTA of this module, remove shortcut.
-        if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
+        if(mod.getName() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
         {
             mta = NULL;
             globalLog(RTT::Warning, "My MTA has been removed.");

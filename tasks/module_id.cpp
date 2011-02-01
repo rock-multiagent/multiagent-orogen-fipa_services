@@ -2,7 +2,8 @@
 
 namespace root
 {
-int max_length = 128;
+/*
+int max_length = 256;
 
 bool ModuleID::splitID(std::string const& module_id,
         std::string* envID,
@@ -21,4 +22,5 @@ bool ModuleID::splitID(std::string const& module_id,
     *name = std::string((pch=strtok(NULL, tok)) ? pch : "");
     return (!envID->empty() && !type->empty() && !name->empty()); 
 }
+*/
 } // namespace modules

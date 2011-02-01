@@ -1,18 +1,18 @@
 /*
  * \file    ModuleID.hpp
  *  
- * \brief   Class to split the module ID into ENVID, TYPE, NAME.
+ * \brief   Class to split the module ID into ENVID and NAME.
  *
  * \details Class is used to extract the information of the module id.
- *          These are the environmental ID (unique for every pc), the
- *          type of the module (at the moment CHAT, LOG, MTA, PROXY, ROOT),
- *          and for non-MTAs the name. The whole module ID has to be unique
+ *          These are the environmental ID (unique for every pc) and the
+ *          name of the module (e.g. MTA or ROOT01).
+ *          MTAs must be named MTA. The whole module ID has to be unique
  *          within all modules.
  *          
  *          German Research Center for Artificial Intelligence\n
  *          Project: Rimres
  *
- * \date    13.07.2010
+ * \date    01.02.2011
  *
  * \author  Stefan.Haase@dfki.de
  */
@@ -33,15 +33,13 @@
 namespace root
 {
 /**
- * The ID (name of the module) of each module is build up like ENVID-TYPE-NAME.
- * The name of the message transport agents is ENVID-TYPE.
+ * The ID (name of the module) of each module is build up like ENVID_NAME.
+ * The name of the message transport agents is ENVID_TYPE.
  * Each ID has to be unique within the framework.
  * - ENVID: Environment ID. Every module on one pc should have the same ENVID.
- * - TYPE: Type of the module.  At the moment: CHAT, LOG, MTA, PROXY, ROOT
- * - NAME: Name of the module. This field is empty for all MTAs 
- *         (because there is only one MTA in each environment).
- * This class will be extended with an xml file, where all the available
- * types and their abilities are listed.
+ *          Attention: Contains an underscore, e.g. sherpa_0.
+ * - NAME: Name appendix of the module. This field is expected to be 'MTA' for all MTAs 
+ *         (because there is expected only one MTA in each environment).
  */
 class ModuleID
 {
@@ -49,7 +47,25 @@ class ModuleID
     ModuleID(std::string const& module_id)
     {
         mID = module_id;
-        splitID(module_id, &mEnvID, &mType, &mName);
+        //splitID(module_id, &mEnvID, &mName);
+        // Second '_' divides the environment name and the appendix.
+        int pos_sec__ = -1;
+        for(int i=0; i<module_id.size(); i++)
+        {
+            if(module_id.at(i) == '_' && pos_sec__ == -1)
+                pos_sec__ = 0;
+            else if(module_id.at(i) == '_' && pos_sec__ == 0)
+                pos_sec__ = i;
+        }
+        if(pos_sec__ > 0) // Find two substrings?
+        {
+            mEnvID = module_id.substr(0,pos_sec__);
+            if(module_id.size() > pos_sec__ + 1)
+            {
+                int pos_name = pos_sec__ + 1;
+                mName = module_id.substr(pos_name, module_id.size()-pos_name);
+            }
+        }
     }
 
     /**
@@ -58,21 +74,21 @@ class ModuleID
      * default is '_'. Use this method if you need all parts of the module-id. 
      * If the id could not be passed, empty strings will be set.
      */
+    /*
     bool splitID(std::string const& module_id,
             std::string* envID,
             std::string* type,
             std::string* name, 
             std::string tokens_="_");
+    */    
 
     inline std::string getID(){return mID;}
     inline std::string getEnvID(){return mEnvID;}
-    inline std::string getType(){return mType;}
     inline std::string getName(){return mName;}
 
  private:
     std::string mID;
     std::string mEnvID;
-    std::string mType;
     std::string mName;
 };
 } // namespace modules

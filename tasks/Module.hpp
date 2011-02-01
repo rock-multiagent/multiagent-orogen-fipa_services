@@ -158,6 +158,11 @@ friend class ModuleBase;
     virtual void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
 
     /**
+     * Returns true if a connection to the named module is available.
+     */
+    bool isConnectedTo(std::string name);
+
+    /**
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
      * Without being overwritten, the module will send the message back to

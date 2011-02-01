@@ -61,8 +61,9 @@ task_context "Module" do
 	    doc('Creates and connects additional ports.')
 end
 
-deployment "A_ROOT_1" do
-    mod = task("A_ROOT_1", "root::Module").
+deployment_name = ENV['FAMOS_SYSTEM_ID']+'_'+'ROOT01'
+deployment deployment_name do
+    mod = task(deployment_name, "root::Module").
         priority('10').
         periodic('0.001')
         #start
