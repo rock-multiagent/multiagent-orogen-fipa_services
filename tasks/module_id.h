@@ -50,7 +50,7 @@ class ModuleID
         //splitID(module_id, &mEnvID, &mName);
         // Second '_' divides the environment name and the appendix.
         int pos_sec__ = -1;
-        for(int i=0; i<module_id.size(); i++)
+        for(unsigned int i=0; i<module_id.size(); i++)
         {
             if(module_id.at(i) == '_' && pos_sec__ == -1)
                 pos_sec__ = 0;
@@ -60,7 +60,7 @@ class ModuleID
         if(pos_sec__ > 0) // Find two substrings?
         {
             mEnvID = module_id.substr(0,pos_sec__);
-            if(module_id.size() > pos_sec__ + 1)
+            if((int)module_id.size() > pos_sec__ + 1)
             {
                 int pos_name = pos_sec__ + 1;
                 mName = module_id.substr(pos_name, module_id.size()-pos_name);
