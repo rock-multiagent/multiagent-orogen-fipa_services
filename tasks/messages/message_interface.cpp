@@ -73,12 +73,12 @@ void MessageInterface::setMessage(std::string const& input)
         {
             throw MessageException("Parameter '" + param + "' unknown.");
         }
-        if(entry == "START") // Add all following entries until STOP.
+        if(entry == "BEGIN") // Add all following entries until STOP.
         {
             bool stop_found = false;
             for(++tok_iter; tok_iter != tokens.end(); ++tok_iter)
             {
-                if(*tok_iter == "STOP")
+                if(*tok_iter == "END")
                 {
                     stop_found = true;
                     break;
