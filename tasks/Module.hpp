@@ -57,10 +57,6 @@
     TypeName(const TypeName&);             \
     void operator=(const TypeName&)
 
-namespace orogen_transports {
-    class TypelibMarshallerBase;
-}
-
 namespace root
 {
 class ConnectionInterface;
@@ -203,7 +199,6 @@ friend class ModuleBase;
      * Used to publish and collect services (modules).
      */
     rock::communication::ServiceDiscovery* serviceDiscovery;
-    orogen_transports::TypelibMarshallerBase* transport;
     ModuleID modID; /// Contains the environment ID, the type and the name of the module.
     sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
 

@@ -20,7 +20,6 @@ SET(SOURCES
     messages/message_interface.cpp
     messages/fipa_message.cpp
     connections/corba_connection.cpp
-    ../.orogen/typekit/transports/typelib/TypelibMarshallerBase.cpp
 )
 
 SET(ROOT_TASKLIB_HEADERS ${ROOT_TASKLIB_HEADERS} ${HEADERS})
