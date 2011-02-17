@@ -166,6 +166,13 @@ friend class ModuleBase;
      */
     virtual bool processMessage(std::string& message);
 
+    /**
+     * Creates a new FipaMessage and sets the passed parameters.
+     * You can define several receivers divided by spaces.
+     */
+    bool sendMessage(std::string sender_id, std::string recv_id, 
+            std::string msg_content, std::string conversation_id);
+
     ////////////////////////////////RPC-METHODS//////////////////////////
     /**
      * RPC-method, used within 'connectToModule()' to create the ports on the
@@ -185,6 +192,15 @@ friend class ModuleBase;
      * Callback function removes the service from the list if it disappears.
      */
 	virtual void serviceRemoved_(std::string& remote_id, std::string& remote_ior);
+
+    static std::string itostr(int num)
+    {
+        char buffer[128];
+        int n = 0;
+        n=std::sprintf (buffer, "%d", num);
+        std::string str(buffer);
+        return n>0 ? str : "";
+    }
 
     ////////////////////////////////PARAMETER///////////////////////////
     FipaMessage fipa; /// Fipa message generator.

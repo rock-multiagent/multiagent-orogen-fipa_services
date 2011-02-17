@@ -106,10 +106,16 @@ class MessageInterface
     std::vector<std::string>& getEntry(std::string const& parameter_name);
 
     /**
+     * Returns the first entry of the vector or an empty string if 
+     * there is no first entry.
+     */
+    std::string getFirstEntry(std::string const& parameter_name);
+
+    /**
      * Parses the input string and fills the parameters-map.
      * Format: <PARAMETER entry> || <PARAMETER START entry* STOP> \n
-     * START and STOP groups values together.
-     * E.g.: <i> PERFORMATIVE inform SENDER mod1 RECEIVER START mod2 mod3 STOP </i>\n
+     * BEGIN and END groups values together.
+     * E.g.: <i> PERFORMATIVE inform SENDER mod1 RECEIVER BEGIN mod2 mod3 END </i>\n
      * Look at the class description of each supported language for further informations.
      * Throws MessageException.
      */

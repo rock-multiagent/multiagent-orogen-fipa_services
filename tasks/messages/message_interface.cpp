@@ -54,6 +54,19 @@ std::vector<std::string>& MessageInterface::getEntry(std::string const& paramete
     return it->second.entries;
 }
 
+std::string MessageInterface::getFirstEntry(std::string const& parameter_name)
+{
+    try
+    {
+        std::vector<std::string>& entries_ = getEntry(parameter_name);
+        return entries_.at(0);
+    }
+    catch(MessageException& e)
+    {
+        return "";
+    }
+}
+
 void MessageInterface::setMessage(std::string const& input)
 {
     typedef boost::tokenizer<boost::char_separator<char> > tokenizer;
@@ -73,7 +86,7 @@ void MessageInterface::setMessage(std::string const& input)
         {
             throw MessageException("Parameter '" + param + "' unknown.");
         }
-        if(entry == "BEGIN") // Add all following entries until STOP.
+        if(entry == "BEGIN") // Add all following entries until END.
         {
             bool stop_found = false;
             for(++tok_iter; tok_iter != tokens.end(); ++tok_iter)

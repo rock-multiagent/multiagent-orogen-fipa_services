@@ -89,7 +89,6 @@ bool Module::configureHook()
     else
 	    systemIdString = this->getName();
     */	  
-    std::cout << "NAME " << this->getName() << std::endl;
     modID = ModuleID(this->getName());
 
     // Configure SD.
@@ -110,7 +109,7 @@ bool Module::configureHook()
         globalLog(RTT::Error, "%s", e.what());
     }
     globalLog(RTT::Info, "Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
-        _module_name.get().c_str(), _avahi_type.get().c_str(), _avahi_port.get(), _avahi_ttl.get());
+        modID.getID().c_str(), _avahi_type.get().c_str(), _avahi_port.get(), _avahi_ttl.get());
 
     return true;
 }
@@ -239,8 +238,53 @@ bool Module::processMessage(std::string& message)
         log(RTT::Warning) << "MessageException: " << e.what() << RTT::endlog();
         return false;
     }
-    
     return true;
+}
+
+bool Module::sendMessage(std::string sender_id, std::string recv_id, 
+        std::string msg_content, std::string conversation_id)
+{
+    std::map<std::string, ConnectionInterface*>::iterator it;
+    ConnectionInterface* recv_con = mta;
+    // MTA available?
+    std::string recv_name;
+    if(recv_con == NULL)
+    {
+        if(!recv_id.empty())
+        {
+            ModuleID modID_(recv_id);
+            // Same environment: send directly, else: send to its MTA.
+            if(modID.getEnvID().compare(modID_.getEnvID())==0)
+                recv_name = recv_id;
+            else
+                recv_name = modID.getEnvID()+"_MTA";
+            it = connections.find(recv_name);
+            if(it != connections.end())
+                recv_con = it->second;
+        }
+    }
+    if(recv_con == NULL)
+    {
+        log(RTT::Error) << "No suitable MTA to " << recv_name <<" found." << RTT::endlog();
+        return false;
+    }
+
+    std::string msg;        
+    try
+    {
+        // Create message.
+        FipaMessage fipa_;
+        fipa_.setMessage("SENDER "+sender_id);
+        fipa_.setMessage("RECEIVER BEGIN " +recv_id+ " END");
+        fipa_.setMessage("CONTENT BEGIN " +msg_content+ " END");
+        fipa_.setMessage("CONVERSATION-ID " +conversation_id);
+        msg = fipa_.encode();
+    } catch (MessageException& e) {
+        log(RTT::Error) << "MessageException: " << e.what() << RTT::endlog();
+        return false;
+    }
+
+    return recv_con->send(msg);
 }
 
 ////////////////////////////////RPC-METHODS//////////////////////////
