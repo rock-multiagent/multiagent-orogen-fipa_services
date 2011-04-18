@@ -11,7 +11,7 @@
 
 #include "module_id.h"
 
-namespace roc = rock::communication;
+namespace sd = servicediscovery;
 namespace rc = RTT::corba;
 
 namespace root
@@ -92,10 +92,10 @@ bool Module::configureHook()
     modID = ModuleID(this->getName());
 
     // Configure SD.
-    roc::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
+    sd::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
     sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
-    serviceDiscovery = new roc::ServiceDiscovery();
+    serviceDiscovery = new sd::ServiceDiscovery();
     // conf.stringlist.push_back("Type=Basis");
     // Add calback functions.
     serviceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
@@ -351,10 +351,10 @@ Module::Module() : ModuleBase("root::Module"), modID("root::Module")
 {
 }
 
-void Module::serviceAdded(rock::communication::ServiceEvent se)
+void Module::serviceAdded(sd::ServiceEvent se)
 {
-    std::string remote_id = se.getServiceDescription().getName();
-    std::string remote_ior = se.getServiceDescription().getDescription("IOR");
+    std::string remote_id = se.getServiceConfiguration().getName();
+    std::string remote_ior = se.getServiceConfiguration().getDescription("IOR");
     ModuleID mod(remote_id);
     globalLog(RTT::Info, "New module %s added", remote_id.c_str());
 
@@ -381,10 +381,10 @@ void Module::serviceAdded(rock::communication::ServiceEvent se)
     serviceAdded_(remote_id, remote_ior);
 }
 
-void Module::serviceRemoved(rock::communication::ServiceEvent se)
+void Module::serviceRemoved(sd::ServiceEvent se)
 {
-    std::string remote_id = se.getServiceDescription().getName();
-    std::string remote_ior = se.getServiceDescription().getDescription("IOR");
+    std::string remote_id = se.getServiceConfiguration().getName();
+    std::string remote_ior = se.getServiceConfiguration().getDescription("IOR");
     ModuleID mod(remote_id);
     globalLog(RTT::Info, "Module %s removed", remote_id.c_str());
 

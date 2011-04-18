@@ -13,7 +13,7 @@ import_types_from "tasks/connections/fipa_msg_object.h"
 
 using_library "message-generator"
 using_library "message-parser"
-using_library "service-discovery"
+using_library "service_discovery"
 using_library "typelib"
 
 import_types_from "base"

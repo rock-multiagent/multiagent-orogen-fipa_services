@@ -45,7 +45,7 @@
 
 #include <boost/utility.hpp>
 
-#include <service-discovery/ServiceDiscovery.h>
+#include <service_discovery/service_discovery.h>
 
 #include "module_id.h"
 #include "messages/fipa_message.h"
@@ -56,6 +56,9 @@
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName&);             \
     void operator=(const TypeName&)
+
+
+namespace sd = servicediscovery;
 
 namespace root
 {
@@ -214,7 +217,7 @@ friend class ModuleBase;
     /**
      * Used to publish and collect services (modules).
      */
-    rock::communication::ServiceDiscovery* serviceDiscovery;
+    sd::ServiceDiscovery* serviceDiscovery;
     ModuleID modID; /// Contains the environment ID, the type and the name of the module.
     sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
 
@@ -228,13 +231,13 @@ friend class ModuleBase;
      * Callback function adds the newly discovered service if its unknown.
      * Must not be overwritten, use serviceAdded_() instead.
      */
-	void serviceAdded(rock::communication::ServiceEvent se);
+	void serviceAdded(sd::ServiceEvent se);
 
     /**
      * Callback function removes the service from the list if it disappears.
      * Must not be overwritten, use serviceRemoved_() instead.
      */
-	void serviceRemoved(rock::communication::ServiceEvent se);
+	void serviceRemoved(sd::ServiceEvent se);
 };
 } // namespace modules
 

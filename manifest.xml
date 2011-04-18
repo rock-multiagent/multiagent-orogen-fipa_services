@@ -1,5 +1,5 @@
 <package>
-  <description brief="Rimres Root Module">
+  <description brief="A root module for the communication with fipa messages">
   </description>
   <author>Stefan Haase/stefan.haase@dfki.de</author>
   <license></license>
@@ -8,7 +8,7 @@
   <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
   <depend package="base/types" />
   <depend package="boost" />
-  <depend package="communication/service-discovery" />
+  <depend package="communication/service_discovery" />
   <depend package="communication/fipa-message-parser" />
  <!-- <depend package="ruby/fipa-message" /> -->
   <!--
