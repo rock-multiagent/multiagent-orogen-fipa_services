@@ -11,8 +11,7 @@ version '0.3'
 
 import_types_from "tasks/connections/fipa_msg_object.h"
 
-using_library "message-generator"
-using_library "message-parser"
+using_library "fipa_acl"
 using_library "service_discovery"
 using_library "typelib"
 

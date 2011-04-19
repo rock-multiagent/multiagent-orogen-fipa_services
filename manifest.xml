@@ -9,7 +9,7 @@
   <depend package="base/types" />
   <depend package="boost" />
   <depend package="communication/service_discovery" />
-  <depend package="communication/fipa-message-parser" />
+  <depend package="communication/fipa_acl" />
  <!-- <depend package="ruby/fipa-message" /> -->
   <!--
   <depend package="sigc" />

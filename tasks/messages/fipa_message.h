@@ -24,7 +24,7 @@
 #include<string>
 
 #include "message_interface.h"
-#include <message-generator/ACLMessage.h>
+#include <fipa_acl/message_generator/acl_message.h>
 
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName&);             \

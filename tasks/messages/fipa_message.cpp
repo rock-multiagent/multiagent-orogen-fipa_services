@@ -2,8 +2,7 @@
 
 #include <iostream>
 
-#include <message-generator/ACLMessageOutputParser.h>
-#include <message-parser/message_parser.h>
+#include <fipa_acl/bitefficient_message.h>
 
 namespace root
 {

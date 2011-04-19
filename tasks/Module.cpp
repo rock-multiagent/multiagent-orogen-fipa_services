@@ -6,7 +6,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#include <message-generator/ACLMessageOutputParser.h>
+#include <fipa_acl/bitefficient_message.h> 
 #include <rtt/transports/corba/TaskContextServer.hpp>
 
 #include "module_id.h"
