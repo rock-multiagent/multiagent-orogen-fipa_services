@@ -7,15 +7,11 @@
   <logo>http://</logo>
   <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
   <depend package="base/types" />
+  <depend package="typelib" />
   <depend package="boost" />
   <depend package="communication/service_discovery" />
   <depend package="communication/fipa_acl" />
- <!-- <depend package="ruby/fipa-message" /> -->
-  <!--
-  <depend package="sigc" />
-  <depend package="orocos/logger" />
-  <depend package="boost" />
-  -->
+  <depend package="tools/logger" />
   <versioncontrol type="git" url="" />
   <export>
     <cpp cflags="" lflags="" />
