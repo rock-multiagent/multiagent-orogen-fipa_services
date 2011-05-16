@@ -12,6 +12,7 @@
   <depend package="communication/service_discovery" />
   <depend package="communication/fipa_acl" />
   <depend package="tools/logger" />
+  <depend package="communication/service_discovery" />
   <versioncontrol type="git" url="" />
   <export>
     <cpp cflags="" lflags="" />
