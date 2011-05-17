@@ -38,8 +38,15 @@ CorbaConnection::~CorbaConnection()
 
 bool CorbaConnection::connect() //virtual
 {
+    log(RTT::Debug) << "CorbaConnection::connect() " << RTT::endlog();
+
     if(connected)
+    {
+        log(RTT::Debug) << "CorbaConnection::connect() - is already connected. " << RTT::endlog();
         return true;
+    }
+
+    log(RTT::Debug) << "CorbaConnection::connect() - not yet connected. " << RTT::endlog();
 
     if(!createPorts())
     {
@@ -97,7 +104,9 @@ bool CorbaConnection::connectLocal() //virtual
 }
 
 bool CorbaConnection::disconnect()
-{
+{ 
+    log(RTT::Debug) << "CorbaConnection::disconnect() " << RTT::endlog();
+
     if(controlTaskProxy)
     {
         taskContextSender->removePeer(receiverIOR);
