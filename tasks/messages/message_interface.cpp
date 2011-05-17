@@ -1,6 +1,7 @@
 #include "message_interface.h"
 
 #include <iostream>
+#include <stdio.h>
 
 namespace root
 {
@@ -42,29 +43,21 @@ std::vector<std::string>& MessageInterface::getEntry(std::string const& paramete
     if(it == parameters.end()) {
         throw MessageException("Parameter '" + parameter_name + "' unknown.");
     }
+
     // Entries not empty?
-    for(unsigned int i=0; i < it->second.entries.size(); i++)
+    if(it->second.entries.empty())
     {
-        if(it->second.entries.empty())
-        {
-            throw MessageException("Entry of parameter '" + 
-                    parameter_name + "' is empty.");
-        }
+        throw MessageException("Entry of parameter '" + 
+                parameter_name + "' is empty.");
     }
+
     return it->second.entries;
 }
 
 std::string MessageInterface::getFirstEntry(std::string const& parameter_name)
 {
-    try
-    {
-        std::vector<std::string>& entries_ = getEntry(parameter_name);
-        return entries_.at(0);
-    }
-    catch(MessageException& e)
-    {
-        return "";
-    }
+    std::vector<std::string>& entries = getEntry(parameter_name);
+    return entries.at(0);
 }
 
 void MessageInterface::setMessage(std::string const& input)
