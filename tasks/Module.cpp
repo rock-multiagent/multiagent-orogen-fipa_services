@@ -325,7 +325,7 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
     ModuleID mod(remote_id);
 
     // Connect to the first appropriate MTA (same environment ids).  
-    if(mta == NULL && (mod.getName() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
+    if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
     {
 		CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
 		try{
@@ -364,7 +364,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
     }
 
     // Build up a list with all the logging-module-IDs.  
-    if(mod.getName() == "LOG")
+    if(mod.getType() == "LOG")
     {
         loggerNames.insert(remote_id);
     }
@@ -394,7 +394,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
     }
 
     // If its a logging module, remove entry in the logger list.
-    if(mod.getName() == "LOG")
+    if(mod.getType() == "LOG")
     {
         loggerNames.erase(remote_id);
     }
@@ -408,7 +408,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
         globalLog(RTT::Info, "Disconnected from %s.", remote_id.c_str());
 
         // If its the MTA of this module, remove shortcut.
-        if(mod.getName() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
+        if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
         {
             mta = NULL;
             globalLog(RTT::Warning, "My MTA has been removed.");

@@ -33,12 +33,12 @@
 namespace root
 {
 /**
- * The ID (name of the module) of each module is build up like ENVID_NAME.
+ * The ID (name of the module) of each module is build up like ENVID_TYPE.
  * The name of the message transport agents is ENVID_TYPE.
  * Each ID has to be unique within the framework.
  * - ENVID: Environment ID. Every module on one pc should have the same ENVID.
  *          Attention: Contains an underscore, e.g. sherpa_0.
- * - NAME: Name appendix of the module. This field is expected to be 'MTA' for all MTAs 
+ * - TYPE: Name appendix of the module. This field is expected to be 'MTA' for all MTAs 
  *         (because there is expected only one MTA in each environment).
  */
 class ModuleID
@@ -47,7 +47,7 @@ class ModuleID
     ModuleID(std::string const& module_id)
     {
         mID = module_id;
-        //splitID(module_id, &mEnvID, &mName);
+        //splitID(module_id, &mEnvID, &mType);
         // Second '_' divides the environment name and the appendix.
         int pos_sec__ = -1;
         for(unsigned int i=0; i<module_id.size(); i++)
@@ -63,7 +63,7 @@ class ModuleID
             if((int)module_id.size() > pos_sec__ + 1)
             {
                 int pos_name = pos_sec__ + 1;
-                mName = module_id.substr(pos_name, module_id.size()-pos_name);
+                mType = module_id.substr(pos_name, module_id.size()-pos_name);
             }
         }
     }
@@ -84,12 +84,12 @@ class ModuleID
 
     inline std::string getID(){return mID;}
     inline std::string getEnvID(){return mEnvID;}
-    inline std::string getName(){return mName;}
+    inline std::string getType(){return mType;}
 
  private:
     std::string mID;
     std::string mEnvID;
-    std::string mName;
+    std::string mType;
 };
 } // namespace modules
 #endif
