@@ -68,7 +68,7 @@ bool Module::configureHook()
     // If configure properties are empty, module will be stopped.
     if(_avahi_type.get().empty() || _avahi_port.get() == 0)
     {
-        globalLog(RTT::Info, "Properties are not set, module will be stopped.");
+        globalLog(RTT::Info, "Root: Properties are not set, module will be stopped.");
         return false;
     }
 
@@ -108,7 +108,7 @@ bool Module::configureHook()
     } catch(std::exception& e) {
         globalLog(RTT::Error, "%s", e.what());
     }
-    globalLog(RTT::Info, "Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
+    globalLog(RTT::Info, "Root: Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
         modID.getID().c_str(), _avahi_type.get().c_str(), _avahi_port.get(), _avahi_ttl.get());
 
     return true;
@@ -116,7 +116,7 @@ bool Module::configureHook()
 
 void Module::errorHook()
 {
-    globalLog(RTT::Error, "Entering error state.");
+    globalLog(RTT::Error, "Root: Entering error state.");
 }
 
 bool Module::startHook()
@@ -183,9 +183,9 @@ void Module::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
                 fipa.setParameter("RECEIVER", loggerNames);
                 mta->send(fipa.encode());
             } catch (MessageException& e) {
-                log(RTT::Warning) << "MessageException: " << e.what() << RTT::endlog();
+                log(RTT::Warning) << "Root: MessageException: " << e.what() << RTT::endlog();
             } catch (ConnectionException& e) {
-                log(RTT::Warning) << "ConnectionException: " << e.what() << RTT::endlog();
+                log(RTT::Warning) << "Root: ConnectionException: " << e.what() << RTT::endlog();
             }
         }
     }
@@ -205,7 +205,7 @@ bool Module::processMessage(std::string& message)
     // If not overwritten, just send all messages back to the sender.
     if(mta == NULL)
     {
-        log(RTT::Warning) << "No MTA available." << RTT::endlog();
+        log(RTT::Warning) << "Root: No MTA available." << RTT::endlog();
         return false;
     }
     try
@@ -213,7 +213,7 @@ bool Module::processMessage(std::string& message)
         fipa.decode(message);
         std::vector<std::string>& content = fipa.getEntry("CONTENT");
         if(content.size())
-            log(RTT::Info) << "Received: " << content.at(0) << RTT::endlog();
+            log(RTT::Info) << "Root: Received: " << content.at(0) << RTT::endlog();
         
         // Send answer if a sender has been defined.
         std::vector<std::string>& sender_vec = fipa.getEntry("SENDER");
@@ -230,12 +230,12 @@ bool Module::processMessage(std::string& message)
     }
     catch(ConnectionException& e)
     {
-        log(RTT::Warning) << "ConnectionException: " << e.what() << RTT::endlog();
+        log(RTT::Warning) << "Root: ConnectionException: " << e.what() << RTT::endlog();
         return false;
     }
     catch(MessageException& e)
     {
-        log(RTT::Warning) << "MessageException: " << e.what() << RTT::endlog();
+        log(RTT::Warning) << "Root: MessageException: " << e.what() << RTT::endlog();
         return false;
     }
     return true;
@@ -265,7 +265,7 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
     }
     if(recv_con == NULL)
     {
-        log(RTT::Error) << "No suitable MTA to " << recv_name <<" found." << RTT::endlog();
+        log(RTT::Error) << "Root: No suitable MTA to " << recv_name <<" found." << RTT::endlog();
         return false;
     }
 
@@ -295,7 +295,7 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     // Return true if the connection have already be established.
     if(connections.find(remote_name) != connections.end())
     {
-        globalLog(RTT::Warning, "(RPC) Connection to '%s' already established", 
+        globalLog(RTT::Warning, "Root: (RPC) Connection to '%s' already established", 
             remote_name.c_str());
         //sem_post(connectSem);
         return true;
@@ -307,14 +307,14 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     try {
         con->connectLocal();
     } catch(ConnectionException& e) {
-        globalLog(RTT::Error, "(RPC) Connection to '%s' could not be established: %s", 
+        globalLog(RTT::Error, "Root: (RPC) Connection to '%s' could not be established: %s", 
                 remote_name.c_str(), e.what());
         //sem_post(connectSem);
         return false;
     }
 
     connections.insert(pair<std::string, CorbaConnection*>(remote_name,con));
-    globalLog(RTT::Info, "(RPC) Connected to '%s'", remote_name.c_str());
+    globalLog(RTT::Info, "Root: (RPC) Connected to '%s'", remote_name.c_str());
     //sem_post(connectSem);
     return true;
 }
@@ -331,12 +331,12 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
 		try{
 		    cc->connect();
 		} catch(ConnectionException& e) {
-		    globalLog(RTT::Info, "ConnectionException: %s", e.what());
+		    globalLog(RTT::Info, "Root: ConnectionException: %s", e.what());
 		    return;        
 		}
 		connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
 		mta = cc;
-		globalLog(RTT::Info, "Connected to %s.", remote_id.c_str());
+		globalLog(RTT::Info, "Root: Connected to %s.", remote_id.c_str());
     }
 }
 
@@ -356,7 +356,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
     std::string remote_id = se.getServiceConfiguration().getName();
     std::string remote_ior = se.getServiceConfiguration().getDescription("IOR");
     ModuleID mod(remote_id);
-    globalLog(RTT::Info, "New module %s added", remote_id.c_str());
+    globalLog(RTT::Info, "Root: New module %s added", remote_id.c_str());
 
     if(remote_id == this->getName())
     {
@@ -374,7 +374,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
     it = connections.find(remote_id);
     if(it != connections.end())
     {
-        globalLog(RTT::Info, "Connection to %s already established.",remote_id.c_str());
+        globalLog(RTT::Info, "Root: Connection to %s already established.",remote_id.c_str());
         return;
     }
 
@@ -386,7 +386,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
     std::string remote_id = se.getServiceConfiguration().getName();
     std::string remote_ior = se.getServiceConfiguration().getDescription("IOR");
     ModuleID mod(remote_id);
-    globalLog(RTT::Info, "Module %s removed", remote_id.c_str());
+    globalLog(RTT::Info, "Root: Module %s removed", remote_id.c_str());
 
     if(remote_id == this->getName())
     {
@@ -405,13 +405,13 @@ void Module::serviceRemoved(sd::ServiceEvent se)
         // Disconnect and delete.
         it->second->disconnect();
         connections.erase(it);
-        globalLog(RTT::Info, "Disconnected from %s.", remote_id.c_str());
+        globalLog(RTT::Info, "Root: Disconnected from %s.", remote_id.c_str());
 
         // If its the MTA of this module, remove shortcut.
         if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
         {
             mta = NULL;
-            globalLog(RTT::Warning, "My MTA has been removed.");
+            globalLog(RTT::Warning, "Root: My MTA has been removed.");
         }
     }
 
