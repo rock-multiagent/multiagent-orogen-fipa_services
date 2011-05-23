@@ -80,6 +80,7 @@ friend class ModuleBase;
      * \param name Name of the module. Will be set to \a _module_name in configureHook().
      */
     Module(std::string const& name = "root::Module");
+    Module(std::string const& name, RTT::ExecutionEngine* engine); 
     ~Module();
 
     ////////////////////////////////HOOKS////////////////////////////////

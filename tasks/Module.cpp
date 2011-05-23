@@ -32,6 +32,19 @@ Module::Module(std::string const& name) : ModuleBase(name),
     sem_init(connectSem, 1, 1);
 }
 
+Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBase(name, engine), 
+        fipa(),
+        connections(),
+        mta(NULL),
+        loggerNames(),
+        serviceDiscovery(NULL),
+        modID(name),
+        connectSem(NULL)
+{
+    connectSem = new sem_t();
+    sem_init(connectSem, 1, 1);
+}
+
 Module::~Module()
 {
     if(serviceDiscovery != NULL)
