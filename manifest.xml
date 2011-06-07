@@ -9,10 +9,9 @@
   <depend package="base/types" />
   <depend package="typelib" />
   <depend package="boost" />
-  <depend package="communication/service_discovery" />
+  <depend package="tools/service_discovery" />
   <depend package="communication/fipa_acl" />
   <depend package="tools/logger" />
-  <depend package="communication/service_discovery" />
   <versioncontrol type="git" url="" />
   <export>
     <cpp cflags="" lflags="" />
