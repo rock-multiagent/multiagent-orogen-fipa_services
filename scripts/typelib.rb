@@ -5,17 +5,17 @@ begin
     require 'fipa-message'
 	Typelib.convert_to_ruby '/fipa/BitefficientMessage' do |value|
 	  	# from_byte_array is defined in the rice extension of FipaMessage
-		FipaMessage.from_byte_array(value.vec.to_a)
+		FIPA::Utils.deserialize(value.data.to_a)
 	end
 
-	Typelib.convert_from_ruby FipaMessage, '/fipa/BitefficientMessage' do |value, typelib_type|
-		# create and object of type '/fipa/BitefficientMessage'
+	Typelib.convert_from_ruby FIPA::ACLMessage, '/fipa/BitefficientMessage' do |value, typelib_type|
+		# create an object of type '/fipa/BitefficientMessage'
 		result = typelib_type.new
 
 		# assign our array to the vector
 		# conversion between vector and array is supported by typelib
 		# so we don't have to do anything else here
-		result.data = value.to_byte_array	
+		result.data = FIPA::Utils.serialize(value)
 		result
 	end
 
