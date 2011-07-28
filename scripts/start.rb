@@ -1,4 +1,5 @@
 require 'fipa-message'
+include FIPA
 
 require 'orocos'
 include Orocos
@@ -26,9 +27,9 @@ end
 
     # Generate and send fipa message.
     performative = "inform"
-    msg = FipaMessage.new
+    msg = ACLMessage.new
     msg.setPerformative(performative)
-    agent = FipaAgentId.new(mta_name)
+    agent = AgentId.new(mta_name)
     msg.setContent("Test message")
     in_port = root_module.inputPortMTS
     writer = in_port.writer
