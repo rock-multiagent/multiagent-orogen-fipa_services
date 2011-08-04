@@ -133,7 +133,7 @@ bool FipaMessage::createACLMessage()
         aclMSG = NULL;
     }
     if(getEntry("PERFORMATIVE").size() == 0)
-        aclMSG = new fa::ACLMessage(fa::INFORM);
+        aclMSG = new fa::ACLMessage(fa::ACLMessage::INFORM);
     else
         aclMSG = new fa::ACLMessage();
 
@@ -149,10 +149,10 @@ bool FipaMessage::createACLMessage()
             continue;
 
         if(param == "PERFORMATIVE") {
-            if(aclMSG->setPerformative(it->second.entries[0]) != 0) {
-                std::cerr << "Performatives could not be set." << std::endl;
-                return false;
-            }
+            aclMSG->setPerformative(it->second.entries[0]);
+//                std::cerr << "Performatives could not be set." << std::endl;
+  //              return false;
+ //           }
         } else if(param == "SENDER") {
             fa::AgentID sender = fa::AgentID(it->second.entries[0]);
             aclMSG->setSender(sender);
