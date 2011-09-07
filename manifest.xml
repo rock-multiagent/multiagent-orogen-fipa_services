@@ -10,7 +10,7 @@
   <depend package="typelib" />
   <depend package="boost" />
   <depend package="tools/service_discovery" />
-  <depend package="communication/fipa_acl" />
+  <depend package="multiagent/fipa_acl" />
   <depend package="tools/logger" />
   <versioncontrol type="git" url="" />
   <export>
