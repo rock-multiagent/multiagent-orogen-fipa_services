@@ -338,8 +338,16 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
     ModuleID mod(remote_id);
 
     // Connect to the first appropriate MTA (same environment ids).  
-    if(mta == NULL && (mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID()))
+    if(mta == NULL && mod.getType() == "MTA")
     {
+                if (mod.getEnvID() != this->modID.getEnvID())
+                {
+			RTT::log(RTT::Info) << "WARNING: MTA for other environment than this (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
+			return;
+                }
+
+        	RTT::log(RTT::Info) << "MTA found for my environment (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
+
 		CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
 		try{
 		    cc->connect();
@@ -350,7 +358,7 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
 		connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
 		mta = cc;
 		globalLog(RTT::Info, "Root: Connected to %s.", remote_id.c_str());
-    }
+    } 
 }
 
 void Module::serviceRemoved_(std::string& remote_id, std::string& remote_ior)
@@ -369,7 +377,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
     std::string remote_id = se.getServiceConfiguration().getName();
     std::string remote_ior = se.getServiceConfiguration().getDescription("IOR");
     ModuleID mod(remote_id);
-    globalLog(RTT::Info, "Root: New module %s added", remote_id.c_str());
+    globalLog(RTT::Info, "Root: New module %s addEvent", remote_id.c_str());
 
     if(remote_id == this->getName())
     {
