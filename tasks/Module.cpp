@@ -26,10 +26,20 @@ Module::Module(std::string const& name) : ModuleBase(name),
         loggerNames(),
         serviceDiscovery(NULL),
         modID(name),
-        connectSem(NULL)
+        connectSem(NULL),
+        modifyModuleListSem(NULL)
 {
     connectSem = new sem_t();
-    sem_init(connectSem, 1, 1);
+    if( 0 != sem_init(connectSem, 1, 1))
+    {
+        RTT::log(RTT::Warning) << "Semaphore for protecting connection of multiple modules could not be initialized" << RTT::endlog();
+    }
+
+    modifyModuleListSem = new sem_t();
+    if( 0 != sem_init(modifyModuleListSem, 1 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
+    {
+        RTT::log(RTT::Warning) << "Semaphore for modifying list could not be initialized" << RTT::endlog();
+    }
 }
 
 Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBase(name, engine), 
@@ -39,10 +49,20 @@ Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBa
         loggerNames(),
         serviceDiscovery(NULL),
         modID(name),
-        connectSem(NULL)
+        connectSem(NULL),
+        modifyModuleListSem(NULL)
 {
     connectSem = new sem_t();
-    sem_init(connectSem, 1, 1);
+    if( ! sem_init(connectSem, 1, 1) )
+    {
+        RTT::log(RTT::Warning) << "Semaphore for protecting connection of multiple modules could not be initialized" << RTT::endlog();
+    }
+
+    modifyModuleListSem = new sem_t();
+    if( ! sem_init(modifyModuleListSem, 0 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
+    {
+        RTT::log(RTT::Warning) << "Semaphore for modifying list could not be initialized" << RTT::endlog();
+    }
 }
 
 Module::~Module()
@@ -391,15 +411,19 @@ void Module::serviceAdded(sd::ServiceEvent se)
     }
 
     // Do nothing if the connection has already been established.
+    sem_wait(modifyModuleListSem);
+
     std::map<std::string, ConnectionInterface*>::iterator it;
     it = connections.find(remote_id);
     if(it != connections.end())
     {
         globalLog(RTT::Info, "Root: Connection to %s already established.",remote_id.c_str());
+    	sem_post(modifyModuleListSem);
         return;
     }
 
     serviceAdded_(remote_id, remote_ior);
+    sem_post(modifyModuleListSem);
 }
 
 void Module::serviceRemoved(sd::ServiceEvent se)

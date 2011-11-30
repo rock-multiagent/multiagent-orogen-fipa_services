@@ -221,6 +221,7 @@ friend class ModuleBase;
     sd::ServiceDiscovery* serviceDiscovery;
     ModuleID modID; /// Contains the environment ID, the type and the name of the module.
     sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
+    sem_t* modifyModuleListSem; /// Prevents a simultaneous access to the list of modules
 
  private:
     /**
