@@ -26,7 +26,7 @@ end
     root_module.configure
 
     # Generate and send fipa message.
-    performative = "inform"
+    performative = :inform
     msg = ACLMessage.new
     msg.setPerformative(performative)
     agent = AgentId.new(mta_name)
@@ -37,8 +37,8 @@ end
     root_module.start
 
     while true
-         #puts 'Schreibe '
-         #writer.write(msg)
+         puts 'Schreibe '
+         writer.write(msg)
         sleep 1
     end
 end 
