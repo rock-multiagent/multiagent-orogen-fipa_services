@@ -190,10 +190,7 @@ bool FipaMessage::createACLMessage()
         } else if(param == "IN-REPLY-TO") {
             aclMSG->setInReplyTo(it->second.entries[0]);
         } else if(param == "REPLY-BY") {
-            if(aclMSG->setReplyBy1(it->second.entries[0]) != 0)
-            {
-                return false;
-            }
+            aclMSG->setReplyBy1(it->second.entries[0]);
         } else {
             return false;
         }        
