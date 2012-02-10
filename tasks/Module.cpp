@@ -311,6 +311,7 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
         fipa_.setMessage("RECEIVER BEGIN " +recv_id+ " END");
         fipa_.setMessage("CONTENT BEGIN " +msg_content+ " END");
         fipa_.setMessage("CONVERSATION-ID " +conversation_id);
+        fipa_.setMessage("PERFORMATIVE inform");
         msg = fipa_.encode();
     } catch (MessageException& e) {
         log(RTT::Error) << "MessageException: " << e.what() << RTT::endlog();
