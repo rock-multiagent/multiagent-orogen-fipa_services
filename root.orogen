@@ -41,6 +41,13 @@ import_types_from "base"
 #     mta->send( encodedFIPAMsg /** string as byte array container **/);
 # }
 #
+#
+# Warning: root modules and derived components should *NOT* be started with
+# the '--sd-domain' option. Instead the property 'avahi_type' should be used, 
+# to set domain and type (_udp,_tcp).
+# Otherwise a runtime condition exists between receiving events from the 
+# underlying service_discovery and registering callbacks for these events. 
+# !! -- this requires to be fixed in upcoming versions -- !!
 task_context "Module" do
     needs_configuration
 
