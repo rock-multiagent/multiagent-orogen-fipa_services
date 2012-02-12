@@ -53,9 +53,13 @@ class ModuleID
         for(unsigned int i=0; i<module_id.size(); i++)
         {
             if(module_id.at(i) == '_' && pos_sec__ == -1)
+            {
                 pos_sec__ = 0;
-            else if(module_id.at(i) == '_' && pos_sec__ == 0)
+            } else if(module_id.at(i) == '_' && pos_sec__ == 0)
+            {
                 pos_sec__ = i;
+                break;
+            }
         }
         if(pos_sec__ > 0) // Find two substrings?
         {
