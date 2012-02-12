@@ -129,8 +129,8 @@ bool Module::configureHook()
     sc.setTTL(_avahi_ttl.get());
     sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
     serviceDiscovery = new sd::ServiceDiscovery();
-    // conf.stringlist.push_back("Type=Basis");
-    // Add calback functions.
+
+    // Add callback functions.
     serviceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
         &Module::serviceAdded));
     serviceDiscovery->removedComponentConnect(sigc::mem_fun(*this, 
@@ -167,9 +167,7 @@ void Module::updateHook()
 
     for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
     { 
-		//RTT::base::InputPortInterface* read_port = dynamic_cast<RTT::base::InputPortInterface*>(*it);
 		RTT::InputPort<fipa::BitefficientMessage>* msg_port = dynamic_cast< RTT::InputPort<fipa::BitefficientMessage>* >(*it);
-
 		fipa::BitefficientMessage message;
 		if(msg_port)
 		{
@@ -357,29 +355,39 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
 void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
 {
     ModuleID mod(remote_id);
+    if(mod.getType() != "MTA")
+    {
+        RTT::log(RTT::Info) << "Module is no MTA" << RTT::endlog();
+        return;
+    }
 
     // Connect to the first appropriate MTA (same environment ids).  
-    if(mta == NULL && mod.getType() == "MTA")
+    if(mta != NULL)
     {
-                if (mod.getEnvID() != this->modID.getEnvID())
-                {
-			RTT::log(RTT::Info) << "WARNING: MTA for other environment than this (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
-			return;
-                }
+        RTT::log(RTT::Info) << "MTA is already set for this component" << RTT::endlog();
+        return;
+    }
+    
+    if (mod.getEnvID() != this->modID.getEnvID())
+    {
+    	RTT::log(RTT::Info) << "WARNING: MTA for other environment than this (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
+    	return;
+    }
 
-        	RTT::log(RTT::Info) << "MTA found for my environment (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
+    RTT::log(RTT::Info) << "MTA found for my environment (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
 
-		CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
-		try{
-		    cc->connect();
-		} catch(ConnectionException& e) {
-		    globalLog(RTT::Info, "Root: ConnectionException: %s", e.what());
-		    return;        
-		}
-		connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
-		mta = cc;
-		globalLog(RTT::Info, "Root: Connected to %s.", remote_id.c_str());
-    } 
+    CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
+    try {
+        cc->connect();
+    } catch(ConnectionException& e)
+    {
+        globalLog(RTT::Info, "Root: ConnectionException: %s", e.what());
+        return;        
+    }
+    connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
+    mta = cc;
+    globalLog(RTT::Info, "Root: Connected to %s.", remote_id.c_str());
+    
 }
 
 void Module::serviceRemoved_(std::string& remote_id, std::string& remote_ior)
@@ -402,6 +410,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
 
     if(remote_id == this->getName())
     {
+        globalLog(RTT::Info, "Root: 'new' module is self, thus not added.");
         return;
     }
 
