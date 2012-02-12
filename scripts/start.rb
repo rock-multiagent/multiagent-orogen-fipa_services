@@ -24,21 +24,9 @@ end
     root_module.avahi_port = 12000
     root_module.avahi_ttl = 0
     root_module.configure
-
-    # Generate and send fipa message.
-    performative = :inform
-    msg = ACLMessage.new
-    msg.setPerformative(performative)
-    agent = AgentId.new(mta_name)
-    msg.setContent("Test message")
-    in_port = root_module.inputPortMTS
-    writer = in_port.writer
-
     root_module.start
 
     while true
-         puts 'Schreibe '
-         writer.write(msg)
         sleep 1
     end
 end 
