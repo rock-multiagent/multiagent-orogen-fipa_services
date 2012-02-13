@@ -275,28 +275,47 @@ bool Module::processMessage(std::string& message)
 bool Module::sendMessage(std::string sender_id, std::string recv_id, 
         std::string msg_content, std::string conversation_id)
 {
+    RTT::log(RTT::Debug) << "Root: send message sender_id '" << sender_id << "' recv_id '" << recv_id <<
+        "' msg_content '" << msg_content << "' conversation_id '" << conversation_id << "'" << RTT::endlog();
+
     std::map<std::string, ConnectionInterface*>::iterator it;
     ConnectionInterface* recv_con = mta;
-    // MTA available?
+
+    // Check local receivers if no MTA is available
     std::string recv_name;
     if(recv_con == NULL)
     {
         if(!recv_id.empty())
         {
             ModuleID modID_(recv_id);
-            // Same environment: send directly, else: send to its MTA.
-            if(modID.getEnvID().compare(modID_.getEnvID())==0)
+
+            // Check whether this is a valid receiver
+            if(modID_.getType() == "MTA")
+            {
+                RTT::log(RTT::Error) << "Root: message receiver is set to '" << recv_id << "', but an MTA cannot serve as receiving endpoint" << RTT::endlog();
+                return false;
+            }
+
+            // Same environment: send directly, else: foward message to MTA
+            // of the enviroment (if known)
+            if(modID.getEnvID() == modID_.getEnvID())
+            {
                 recv_name = recv_id;
-            else
-                recv_name = modID.getEnvID()+"_MTA";
+            } else {
+                recv_name = modID_.getEnvID()+"_MTA";
+            }
+
             it = connections.find(recv_name);
             if(it != connections.end())
                 recv_con = it->second;
         }
     }
+    
+    // If no MTA for the specified enviroment is known
+    // return error
     if(recv_con == NULL)
     {
-        log(RTT::Error) << "Root: No suitable MTA to " << recv_name <<" found." << RTT::endlog();
+        log(RTT::Error) << "Root: No suitable MTA to '" << recv_name << "' found." << RTT::endlog();
         return false;
     }
 
@@ -316,6 +335,7 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
         return false;
     }
 
+    // Send via to local receiver or a responsible MTA
     return recv_con->send(msg);
 }
 
