@@ -24,7 +24,7 @@ void FipaMessage::decode(std::string const& message)
     fa::ACLMessage aclmsg;
     if(!parser.parseData(message, aclmsg))
     {
-        throw new MessageException("Fipa message could not be parsed.");
+        throw MessageException("Fipa message could not be parsed.");
     }
     // Clears the parameter map.
     clear();
