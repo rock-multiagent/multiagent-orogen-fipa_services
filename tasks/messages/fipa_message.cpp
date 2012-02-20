@@ -1,7 +1,10 @@
 #include "fipa_message.h"
 
 #include <iostream>
+#include <sys/time.h>
+#include <cstdio>
 
+#include <rtt/Logger.hpp>
 #include <fipa_acl/bitefficient_message.h>
 
 namespace root
@@ -24,6 +27,21 @@ void FipaMessage::decode(std::string const& message)
     fa::ACLMessage aclmsg;
     if(!parser.parseData(message, aclmsg))
     {
+        time_t now;
+        time(&now);
+        struct tm* current = localtime(&now);
+        char currentTime[25];
+        strftime(currentTime, 25, "%Y%m%d-%H:%M:%S", current);
+
+        std::string filename(currentTime);
+        filename += "_fipa_message:invalid_message_content";
+
+        FILE* file = fopen(filename.c_str(),"w");
+        fwrite(message.data(), 1, message.size(), file);
+        fclose(file);
+
+        char* pwd = getenv("PWD");
+        RTT::log(RTT::Error) << "Root: (fipa) message parsing failed. Message (size: " << message.size() << ") written to " << pwd << "/" << filename << RTT::endlog();
         throw MessageException("Fipa message could not be parsed.");
     }
     // Clears the parameter map.
