@@ -27,7 +27,8 @@ Module::Module(std::string const& name) : ModuleBase(name),
         serviceDiscovery(NULL),
         modID(name),
         connectSem(NULL),
-        modifyModuleListSem(NULL)
+        modifyModuleListSem(NULL),
+        removeConnectionsSem(NULL)
 {
     connectSem = new sem_t();
     if( 0 != sem_init(connectSem, 1, 1))
@@ -40,6 +41,13 @@ Module::Module(std::string const& name) : ModuleBase(name),
     {
         RTT::log(RTT::Warning) << "Semaphore for modifying list could not be initialized" << RTT::endlog();
     }
+
+    removeConnectionsSem = new sem_t();
+    if( 0 != sem_init(removeConnectionsSem, 1 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
+    {
+        RTT::log(RTT::Warning) << "Semaphore for removing connections could not be initialized" << RTT::endlog();
+    }
+
 }
 
 Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBase(name, engine), 
@@ -50,7 +58,8 @@ Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBa
         serviceDiscovery(NULL),
         modID(name),
         connectSem(NULL),
-        modifyModuleListSem(NULL)
+        modifyModuleListSem(NULL),
+        removeConnectionsSem(NULL)
 {
     connectSem = new sem_t();
     if( ! sem_init(connectSem, 1, 1) )
@@ -63,15 +72,19 @@ Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBa
     {
         RTT::log(RTT::Warning) << "Semaphore for modifying list could not be initialized" << RTT::endlog();
     }
+
+    removeConnectionsSem = new sem_t();
+    if( 0 != sem_init(removeConnectionsSem, 1 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
+    {
+        RTT::log(RTT::Warning) << "Semaphore for removing connections could not be initialized" << RTT::endlog();
+    }
 }
 
 Module::~Module()
 {
-    if(serviceDiscovery != NULL)
-    {
-        delete serviceDiscovery;
-        serviceDiscovery = NULL;
-    }
+    delete serviceDiscovery;
+    serviceDiscovery = NULL;
+
     // Delete all the remote connections.
     std::map<std::string, ConnectionInterface*>::iterator it;
     for(it=connections.begin(); it != connections.end(); it++)
@@ -85,6 +98,10 @@ Module::~Module()
     mta = NULL;
     delete connectSem;
     connectSem = NULL;
+
+    delete modifyModuleListSem;
+    delete removeConnectionsSem;
+
     stop();
     // See 'cleanupHook()'.
 }
@@ -163,6 +180,7 @@ void Module::stopHook()
 
 void Module::updateHook()
 {
+    sem_wait(removeConnectionsSem);
     const RTT::DataFlowInterface::Ports& ports = this->ports()->getPorts();
 
     for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
@@ -181,6 +199,7 @@ void Module::updateHook()
 
 		}
     }
+    sem_post(removeConnectionsSem);
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -475,6 +494,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
     }
 
     std::map<std::string, ConnectionInterface*>::iterator it = connections.find(remote_id);
+    sem_wait(removeConnectionsSem);
     if(it != connections.end()) // Connection to 'remote_id' available.
     {
         // Disconnect and delete.
@@ -491,6 +511,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
     }
 
     serviceRemoved_(remote_id, remote_ior);
+    sem_post(removeConnectionsSem);
 }
 } // namespace modules
 
