@@ -167,6 +167,7 @@ friend class ModuleBase;
      * This function can be overwritten to process the incoming data.
      * Without being overwritten, the module will send the message back to
      * the sender.
+     * \param message message content (e.g. bitefficient encoded fipa message)
      */
     virtual bool processMessage(std::string& message);
 

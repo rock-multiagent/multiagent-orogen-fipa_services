@@ -250,6 +250,8 @@ bool Module::isConnectedTo(std::string name)
     return it != connections.end();
 }
 
+// Process message has to be overwritten by an inheriting
+// module
 bool Module::processMessage(std::string& message)
 {
     // If not overwritten, just send all messages back to the sender.
