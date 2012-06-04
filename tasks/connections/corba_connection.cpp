@@ -37,97 +37,125 @@ CorbaConnection::~CorbaConnection()
 }
 
 bool CorbaConnection::connect() //virtual
-{
-    log(RTT::Debug) << "CorbaConnection::connect() " << RTT::endlog();
+{ 
+    try {
+        log(RTT::Debug) << "CorbaConnection::connect() " << RTT::endlog();
 
-    if(connected)
-    {
-        log(RTT::Debug) << "CorbaConnection::connect() - is already connected. " << RTT::endlog();
+        if(connected)
+        {
+            log(RTT::Debug) << "CorbaConnection::connect() - is already connected. " << RTT::endlog();
+            return true;
+        }
+
+        log(RTT::Debug) << "CorbaConnection::connect() - not yet connected. " << RTT::endlog();
+
+        if(!createPorts())
+        {
+            throw ConnectionException("Sender ports could not be created.");
+        }
+
+        if(!createProxy())
+        {
+            throw ConnectionException("Sender proxy could not be created.");
+        }
+
+        if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&)>
+                ("rpcCreateConnectPorts"))
+        {
+            throw ConnectionException("Receiver ports could not be created/connected.");
+        }
+
+        if(!connectPorts())
+        {
+            throw ConnectionException("Sender ports could not be connected.");
+        }
+
+        connected = true;
         return true;
-    }
-
-    log(RTT::Debug) << "CorbaConnection::connect() - not yet connected. " << RTT::endlog();
-
-    if(!createPorts())
+    } catch(CORBA::COMM_FAILURE&)
     {
-        throw ConnectionException("Sender ports could not be created.");
-        return false;
-    }
-
-    if(!createProxy())
+        log(RTT::Error) << "CorbaConnection::connect() - CORBA::COMM_FAILURE" << RTT::endlog();
+        throw ConnectionException("CORBA::COMM_FAILURE");
+    } catch(CORBA::TRANSIENT&)
     {
-        throw ConnectionException("Sender proxy could not be created.");
-        return false;
+        log(RTT::Error) << "CorbaConnection::connect() - CORBA::COMM_FAILURE" << RTT::endlog();
+        throw ConnectionException("CORBA::TRANSIENT");
     }
-
-    if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&)>
-            ("rpcCreateConnectPorts"))
-    {
-        throw ConnectionException("Receiver ports could not be created/connected.");
-        return false;
-    }
-
-    if(!connectPorts())
-    {
-        throw ConnectionException("Sender ports could not be connected.");
-        return false;
-    }
-
-    connected = true;
-    return true;
 }
 
 bool CorbaConnection::connectLocal() //virtual
 {
-    if(connected)
+    try {
+        if(connected)
+            return true;
+
+        if(!createPorts())
+        {
+            throw ConnectionException("Sender ports could not be created.");
+        }
+
+        if(!createProxy())
+        {
+            throw ConnectionException("Sender proxy could not be created.");
+        }
+
+        if(!connectPorts())
+        {
+            throw ConnectionException("Sender ports could not be connected.");
+        }
+        connected = true;
         return true;
 
-    if(!createPorts())
+    } catch(CORBA::COMM_FAILURE&)
     {
-        throw ConnectionException("Sender ports could not be created.");
-        return false;
-    }
-
-    if(!createProxy())
+        log(RTT::Error) << "CorbaConnection::connectLocal() - CORBA::COMM_FAILURE" << RTT::endlog();
+        throw ConnectionException("COBRA::COMM_FAILURE");
+    } catch(CORBA::TRANSIENT&)
     {
-        throw ConnectionException("Sender proxy could not be created.");
-        return false;
+        log(RTT::Error) << "CorbaConnection::connectLocal() - CORBA::COMM_FAILURE" << RTT::endlog();
+        throw ConnectionException("COBRA::TRANSIENT");
     }
-
-    if(!connectPorts())
-    {
-        throw ConnectionException("Sender ports could not be connected.");
-        return false;
-    }
-    connected = true;
-    return true;
 }
 
 bool CorbaConnection::disconnect()
 { 
-    log(RTT::Debug) << "CorbaConnection::disconnect() " << RTT::endlog();
+    try {
+        log(RTT::Debug) << "CorbaConnection::disconnect() " << RTT::endlog();
 
-    if(controlTaskProxy)
+        if(controlTaskProxy)
+        {
+            taskContextSender->removePeer(receiverIOR);
+            delete controlTaskProxy;
+            controlTaskProxy = NULL;
+        }
+        if(inputPort)
+        {
+            taskContextSender->ports()->removePort(inputPortName);
+            delete inputPort;
+            inputPort = NULL;
+        }
+        if(outputPort)
+        {
+            taskContextSender->ports()->removePort(outputPortName);
+            delete outputPort;
+            outputPort = NULL;
+        }
+        
+        connected = false;
+        return true;
+    } catch(CORBA::COMM_FAILURE&)
     {
-        taskContextSender->removePeer(receiverIOR);
-        delete controlTaskProxy;
-        controlTaskProxy = NULL;
-    }
-    if(inputPort)
+        log(RTT::Error) << "CorbaConnection::disconnect() - CORBA::COMM_FAILURE" << RTT::endlog();
+        return false;
+    } catch(CORBA::TRANSIENT&)
     {
-        taskContextSender->ports()->removePort(inputPortName);
-        delete inputPort;
-        inputPort = NULL;
-    }
-    if(outputPort)
+        log(RTT::Error) << "CorbaConnection::disconnect() - CORBA::COMM_FAILURE" << RTT::endlog();
+        return false;
+    } catch(...)
     {
-        taskContextSender->ports()->removePort(outputPortName);
-        delete outputPort;
-        outputPort = NULL;
+        log(RTT::Error) << "CorbaConnection::disconnect() - unknown exception" << RTT::endlog();
+        return false;
     }
-    
-    connected = false;
-    return true;
 }
 
 std::string CorbaConnection::read() //virtual

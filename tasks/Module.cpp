@@ -500,9 +500,12 @@ void Module::serviceRemoved(sd::ServiceEvent se)
     if(it != connections.end()) // Connection to 'remote_id' available.
     {
         // Disconnect and delete.
-        it->second->disconnect();
+        globalLog(RTT::Info, "Root: Disconnecting from %s.", remote_id.c_str());
+        if(!it->second->disconnect())
+        {
+            globalLog(RTT::Warning, "Root: Could not properly disconnect from %s. Still performing cleanup.", remote_id.c_str());
+        }
         connections.erase(it);
-        globalLog(RTT::Info, "Root: Disconnected from %s.", remote_id.c_str());
 
         // If its the MTA of this module, remove shortcut.
         if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
