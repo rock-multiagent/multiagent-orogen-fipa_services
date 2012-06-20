@@ -277,7 +277,10 @@ bool Module::processMessage(std::string& message)
             fipa.setMessage("RECEIVER "+sender);
             fipa.setMessage("SENDER "+modID.getID());
             std::string msg = fipa.encode();
-            mta->send(msg);
+            if(!mta->send(msg))
+            {
+                log(RTT::Warning) << "Failed to send message from '" << modID.getID() << " to " << sender << RTT::endlog();
+            }
         }
     }
     catch(ConnectionException& e)
