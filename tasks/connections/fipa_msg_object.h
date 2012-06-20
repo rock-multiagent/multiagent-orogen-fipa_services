@@ -6,6 +6,7 @@
 
 #include <string>
 #include <vector>
+#include <base/time.h>
 #endif
 
 namespace fipa {
@@ -14,10 +15,12 @@ struct BitefficientMessage {
 #ifndef __orogen
  public:
     BitefficientMessage()
+        : time(base::Time::now())
     {
     }
 
-    BitefficientMessage(std::string msg)
+    BitefficientMessage(const std::string& msg)
+        : time(base::Time::now())
     {
         push_back(msg);
     }
@@ -65,6 +68,7 @@ struct BitefficientMessage {
 
     #endif
     std::vector<uint8_t> data;
+    base::Time time;
 };
 
 } // namespace modules
