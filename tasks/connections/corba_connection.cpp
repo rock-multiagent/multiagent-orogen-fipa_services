@@ -11,7 +11,7 @@ namespace root
 //                           PUBLIC                               //
 ////////////////////////////////////////////////////////////////////
 CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver, 
-        std::string receiver_ior) : 
+        std::string receiver_ior, uint32_t buffer_size) : 
         ConnectionInterface(),
         receiverIOR(receiver_ior),
         taskContextSender(sender),
@@ -21,7 +21,8 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
         portsCreated(false),
         proxyCreated(false),
         receiverConnected(false),
-        portsConnected(false)
+        portsConnected(false),
+        bufferSize(buffer_size)
 {
     receiverName = receiver;
     connected = false;
@@ -59,7 +60,7 @@ bool CorbaConnection::connect() //virtual
             throw ConnectionException("Sender proxy could not be created.");
         }
 
-        if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&)>
+        if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&, boost::int32_t)>
                 ("rpcCreateConnectPorts"))
         {
             throw ConnectionException("Receiver ports could not be created/connected.");
@@ -254,7 +255,7 @@ bool CorbaConnection::createConnectPortsOnReceiver(std::string function_name)
     }
  
     // Create receiver connection.
-    if(!create_receiver_ports.call(senderName, senderIOR))
+    if(!create_receiver_ports.call(senderName, senderIOR, bufferSize))
     {
 	log(RTT::Info) << "Receiver port creation failed. " << RTT::endlog();
         return false;
@@ -294,7 +295,7 @@ bool CorbaConnection::connectPorts()
     // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
     // true=pull(problem here) false=push)
     if(!outputPort->connectTo(remoteinputport, 
-            RTT::ConnPolicy::buffer(20, RTT::ConnPolicy::LOCKED, false, false)))
+            RTT::ConnPolicy::buffer(bufferSize, RTT::ConnPolicy::LOCKED, false, false)))
     {
 	log(RTT::Info) << "Local output port could not be connected to remote input port" << RTT::endlog();
         return false;

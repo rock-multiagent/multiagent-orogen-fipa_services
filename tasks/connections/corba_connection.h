@@ -44,7 +44,7 @@ class CorbaConnection : public ConnectionInterface
 {
  public:
     CorbaConnection(RTT::TaskContext* sender, std::string receiver, 
-            std::string receiver_ior);
+            std::string receiver_ior, uint32_t buffer_size = 100);
                 
     ~CorbaConnection();
 
@@ -103,6 +103,7 @@ class CorbaConnection : public ConnectionInterface
     std::string receiverIOR;
     std::string inputPortName;
     std::string outputPortName;
+    uint32_t bufferSize;
 
     RTT::TaskContext* taskContextSender;
     RTT::corba::TaskContextProxy* controlTaskProxy;

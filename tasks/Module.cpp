@@ -161,6 +161,8 @@ bool Module::configureHook()
     globalLog(RTT::Info, "Root: Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
         modID.getID().c_str(), _avahi_type.get().c_str(), _avahi_port.get(), _avahi_ttl.get());
 
+    mConnectionBufferSize = _connection_buffer_size.get();
+
     return true;
 }
 
@@ -376,7 +378,7 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
 
 ////////////////////////////////RPC-METHODS//////////////////////////
 bool Module::rpcCreateConnectPorts(std::string const& remote_name, 
-        std::string const& remote_ior)
+        std::string const& remote_ior, boost::int32_t buffer_size)
 {
     //sem_wait(connectSem);   
     // Return true if the connection have already be established.
@@ -390,7 +392,7 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     
     // Create the ports and the proxy and use the proxy to connect 
     // the local output to the remote input.
-    CorbaConnection* con = new CorbaConnection(this, remote_name, remote_ior);
+    CorbaConnection* con = new CorbaConnection(this, remote_name, remote_ior, buffer_size);
     try {
         con->connectLocal();
     } catch(ConnectionException& e) {
@@ -407,7 +409,7 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
 }
 
 ////////////////////////////////CALLBACKS///////////////////////////
-void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
+void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior, uint32_t buffer_size)
 {
     ModuleID mod(remote_id);
     if(mod.getType() != "MTA")
@@ -431,7 +433,7 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior)
 
     RTT::log(RTT::Info) << "MTA found for my environment (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
 
-    CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior);
+    CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior, buffer_size);
     try {
         cc->connect();
     } catch(ConnectionException& e)
@@ -487,7 +489,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
         return;
     }
 
-    serviceAdded_(remote_id, remote_ior);
+    serviceAdded_(remote_id, remote_ior, mConnectionBufferSize );
     sem_post(modifyModuleListSem);
 }
 

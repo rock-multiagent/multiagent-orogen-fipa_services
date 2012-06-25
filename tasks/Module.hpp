@@ -182,16 +182,18 @@ friend class ModuleBase;
     /**
      * RPC-method, used within 'connectToModule()' to create the ports on the
      * remote module and to connect the remote output to the local input.
+     * \param buffer_size Message buffer size for the connection being created
      */
 	bool rpcCreateConnectPorts(std::string const & remote_name, 
-            std::string const & remote_ior);
+            std::string const & remote_ior, boost::int32_t buffer_size = 100);
 
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
      * Callback function adds the newly discovered service if its unknown.
      * Default behaviour: Connects to the first appropriate (same environment) MTA.
+     * \param buffer_size Message buffer size for the connection which might be created
      */
-	virtual void serviceAdded_(std::string& remote_id, std::string& remote_ior);
+	virtual void serviceAdded_(std::string& remote_id, std::string& remote_ior, uint32_t buffer_size = 100);
 
     /**
      * Callback function removes the service from the list if it disappears.
@@ -227,6 +229,9 @@ friend class ModuleBase;
 
     std::map<std::string, base::Stats<double> > mPortStats;
     
+    // Buffersize of the connection which will be created between dynamically added components
+    uint32_t mConnectionBufferSize; 
+
  private:
     /**
      * Use Module(std::string const& name) instead.
