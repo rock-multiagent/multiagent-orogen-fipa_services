@@ -7,6 +7,7 @@
   <logo>http://</logo>
   <!-- Dependencies are resolved via osdep file in the autoproj configuration -->
   <depend package="base/types" />
+  <depend package="base/numeric" />
   <depend package="typelib" />
   <depend package="boost" />
   <depend package="tools/service_discovery" />

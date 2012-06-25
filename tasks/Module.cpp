@@ -189,17 +189,28 @@ void Module::updateHook()
 		fipa::BitefficientMessage message;
 		if(msg_port)
 		{
-			if( msg_port->read(message) == RTT::NewData)
+                        std::string portName = msg_port->getName();
+                        uint32_t count = 0;
+			while( msg_port->read(message) == RTT::NewData)
 			{
 				globalLog(RTT::Info, "Root: Received new message on port %s of size %d",
-						(*it)->getName().c_str(), message.size());
+						portName.c_str(), message.size());
 				std::string msg_str = message.toString();
 				processMessage(msg_str);
+                                ++count;
 			}
-
+                        mPortStats[portName].update(count);
 		}
     }
+    std::map<std::string, base::Stats<double> >::iterator statsIt = mPortStats.begin();
+    std::vector<root::PortStats> portStats;
+    for(; statsIt != mPortStats.end(); ++statsIt)
+    {
+        portStats.push_back(root::PortStats(statsIt->first, statsIt->second));
+    }
     sem_post(removeConnectionsSem);
+
+    _port_stats.write(portStats);
 }
 
 ////////////////////////////////////////////////////////////////////

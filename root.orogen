@@ -13,8 +13,10 @@ import_types_from "tasks/connections/fipa_msg_object.h"
 using_library "fipa_acl"
 using_library "service_discovery"
 using_library "typelib"
+using_library "numeric"
 
 import_types_from "base"
+import_types_from "PortStatsTypes.hpp"
 
 # The root module serves as basis for all components that require an
 # automatic connection to a FIPA 'message bus'.
@@ -69,6 +71,9 @@ task_context "Module" do
     dynamic_output_port(/\w+\-\>\w+/, "/fipa/BitefficientMessage").
         doc("Output port to the MTA (Message transport agent)")
 
+    output_port("port_stats", "std::vector<root/PortStats>").
+        doc("Statistics on the messages that are processed on a specific connection")
+
     port_driven
 
     operation('rpcCreateConnectPorts').
@@ -77,6 +82,8 @@ task_context "Module" do
         returns('bool').
         doc('Creates and connects additional ports.')
 end
+
+export_types "std::vector<root/PortStats>"
 
 if ENV['FAMOS_SYSTEM_ID']
     deployment_name = ENV['FAMOS_SYSTEM_ID']+'_'+'ROOT01'

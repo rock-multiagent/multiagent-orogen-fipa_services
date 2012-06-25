@@ -225,6 +225,8 @@ friend class ModuleBase;
     sem_t* modifyModuleListSem; /// Prevents a simultaneous access to the list of modules
     sem_t* removeConnectionsSem; /// Prevents a simulatenous access and removal of ports
 
+    std::map<std::string, base::Stats<double> > mPortStats;
+    
  private:
     /**
      * Use Module(std::string const& name) instead.
