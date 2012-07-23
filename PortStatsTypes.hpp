@@ -1,7 +1,7 @@
 #ifndef CHANNEL_STATS_TYPES
 #define CHANNEL_STATS_TYPES
 
-#include <numeric/stats.hpp>
+#include <numeric/Stats.hpp>
 
 namespace root
 {
