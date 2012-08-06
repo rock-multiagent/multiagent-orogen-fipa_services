@@ -276,7 +276,16 @@ bool Module::processMessage(std::string& message)
     try
     {
         fipa.decode(message);
-        std::vector<std::string>& content = fipa.getEntry("CONTENT");
+
+        std::vector<std::string> content;
+        try {
+	    content = fipa.getEntry("CONTENT");
+        } catch(const MessageException& e)
+        {
+            // Content empty, but that is ok
+            content.push_back("");
+        }
+
         if(content.size())
             log(RTT::Info) << "Root: Received: " << content.at(0) << RTT::endlog();
         
