@@ -155,7 +155,7 @@ bool Module::configureHook()
     // Start SD.
     try{
         serviceDiscovery->start(sc);
-    } catch(std::exception& e) {
+    } catch(const std::exception& e) {
         globalLog(RTT::Error, "%s", e.what());
     }
     globalLog(RTT::Info, "Root: Started service '%s'. Avahi-type: '%s'. Port: %d. TTL: %d.", 
@@ -245,9 +245,9 @@ void Module::globalLog(RTT::LoggerLevel log_type, const char* format, ...)
                         "CONTENT START " + log_msg + " STOP");
                 fipa.setParameter("RECEIVER", loggerNames);
                 mta->send(fipa.encode());
-            } catch (MessageException& e) {
+            } catch (const MessageException& e) {
                 log(RTT::Warning) << "Root: MessageException: " << e.what() << RTT::endlog();
-            } catch (ConnectionException& e) {
+            } catch (const ConnectionException& e) {
                 log(RTT::Warning) << "Root: ConnectionException: " << e.what() << RTT::endlog();
             }
         }
@@ -295,13 +295,12 @@ bool Module::processMessage(std::string& message)
                 log(RTT::Warning) << "Failed to send message from '" << modID.getID() << " to " << sender << RTT::endlog();
             }
         }
-    }
-    catch(ConnectionException& e)
+
+    } catch(const ConnectionException& e)
     {
         log(RTT::Warning) << "Root: ConnectionException: " << e.what() << RTT::endlog();
         return false;
-    }
-    catch(MessageException& e)
+    } catch(const MessageException& e)
     {
         log(RTT::Warning) << "Root: MessageException: " << e.what() << RTT::endlog();
         return false;
@@ -367,7 +366,7 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
         fipa_.setMessage("CONVERSATION-ID " +conversation_id);
         fipa_.setMessage("PERFORMATIVE inform");
         msg = fipa_.encode();
-    } catch (MessageException& e) {
+    } catch (const MessageException& e) {
         log(RTT::Error) << "MessageException: " << e.what() << RTT::endlog();
         return false;
     }
@@ -395,7 +394,7 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     CorbaConnection* con = new CorbaConnection(this, remote_name, remote_ior, buffer_size);
     try {
         con->connectLocal();
-    } catch(ConnectionException& e) {
+    } catch(const ConnectionException& e) {
         globalLog(RTT::Error, "Root: (RPC) Connection to '%s' could not be established: %s", 
                 remote_name.c_str(), e.what());
         //sem_post(connectSem);
@@ -436,7 +435,7 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior, uint
     CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior, buffer_size);
     try {
         cc->connect();
-    } catch(ConnectionException& e)
+    } catch(const ConnectionException& e)
     {
         globalLog(RTT::Info, "Root: ConnectionException: %s", e.what());
         return;        
