@@ -389,13 +389,17 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
         std::string const& remote_ior, boost::int32_t buffer_size)
 {
     //sem_wait(connectSem);   
-    // Return true if the connection have already be established.
-    if(connections.find(remote_name) != connections.end())
+    // reestablish connection if the connection has already been established - prevent dangling
+    // connections
+    std::map<std::string, ConnectionInterface*>::iterator it = connections.find(remote_name);
+    if(it != connections.end())
     {
-        globalLog(RTT::Warning, "Root: (RPC) Connection to '%s' already established", 
+        globalLog(RTT::Warning, "Root: (RPC) Connection to '%s' already established - disconnecting first", 
             remote_name.c_str());
         //sem_post(connectSem);
-        return true;
+
+        it->second->disconnect();
+        connections.erase(it);
     }
     
     // Create the ports and the proxy and use the proxy to connect 
