@@ -26,28 +26,13 @@ Module::Module(std::string const& name) : ModuleBase(name),
         loggerNames(),
         serviceDiscovery(NULL),
         modID(name),
-        connectSem(NULL),
-        modifyModuleListSem(NULL),
-        removeConnectionsSem(NULL)
+        modifyModuleListSem(NULL)
 {
-    connectSem = new sem_t();
-    if( 0 != sem_init(connectSem, 1, 1))
-    {
-        RTT::log(RTT::Warning) << "Semaphore for protecting connection of multiple modules could not be initialized" << RTT::endlog();
-    }
-
     modifyModuleListSem = new sem_t();
     if( 0 != sem_init(modifyModuleListSem, 1 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
     {
         RTT::log(RTT::Warning) << "Semaphore for modifying list could not be initialized" << RTT::endlog();
     }
-
-    removeConnectionsSem = new sem_t();
-    if( 0 != sem_init(removeConnectionsSem, 1 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
-    {
-        RTT::log(RTT::Warning) << "Semaphore for removing connections could not be initialized" << RTT::endlog();
-    }
-
 }
 
 Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBase(name, engine), 
@@ -57,27 +42,14 @@ Module::Module(std::string const& name, RTT::ExecutionEngine* engine) : ModuleBa
         loggerNames(),
         serviceDiscovery(NULL),
         modID(name),
-        connectSem(NULL),
-        modifyModuleListSem(NULL),
-        removeConnectionsSem(NULL)
+        modifyModuleListSem(NULL)
 {
-    connectSem = new sem_t();
-    if( ! sem_init(connectSem, 1, 1) )
-    {
-        RTT::log(RTT::Warning) << "Semaphore for protecting connection of multiple modules could not be initialized" << RTT::endlog();
-    }
-
     modifyModuleListSem = new sem_t();
     if( ! sem_init(modifyModuleListSem, 0 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
     {
         RTT::log(RTT::Warning) << "Semaphore for modifying list could not be initialized" << RTT::endlog();
     }
 
-    removeConnectionsSem = new sem_t();
-    if( 0 != sem_init(removeConnectionsSem, 1 /*1: shared between processes, 0: shared been threads of a process */, 1 /*initial value of the semaphore*/))
-    {
-        RTT::log(RTT::Warning) << "Semaphore for removing connections could not be initialized" << RTT::endlog();
-    }
 }
 
 Module::~Module()
@@ -96,11 +68,8 @@ Module::~Module()
     connections.clear();
     // The mts-connection has been deleted as well.
     mta = NULL;
-    delete connectSem;
-    connectSem = NULL;
 
     delete modifyModuleListSem;
-    delete removeConnectionsSem;
 
     stop();
     // See 'cleanupHook()'.
@@ -182,7 +151,7 @@ void Module::stopHook()
 
 void Module::updateHook()
 {
-    sem_wait(removeConnectionsSem);
+    sem_wait(modifyModuleListSem);
     const RTT::DataFlowInterface::Ports& ports = this->ports()->getPorts();
 
     for(RTT::DataFlowInterface::Ports::const_iterator it = ports.begin(); it != ports.end(); it++)
@@ -210,7 +179,7 @@ void Module::updateHook()
     {
         portStats.push_back(root::PortStats(statsIt->first, statsIt->second));
     }
-    sem_post(removeConnectionsSem);
+    sem_post(modifyModuleListSem);
 
     _port_stats.write(portStats);
 }
@@ -388,7 +357,7 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
 bool Module::rpcCreateConnectPorts(std::string const& remote_name, 
         std::string const& remote_ior, boost::int32_t buffer_size)
 {
-    //sem_wait(connectSem);   
+    sem_wait(modifyModuleListSem);
     // reestablish connection if the connection has already been established - prevent dangling
     // connections
     std::map<std::string, ConnectionInterface*>::iterator it = connections.find(remote_name);
@@ -396,7 +365,6 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     {
         globalLog(RTT::Warning, "Root: (RPC) Connection to '%s' already established - disconnecting first", 
             remote_name.c_str());
-        //sem_post(connectSem);
 
         it->second->disconnect();
         connections.erase(it);
@@ -410,13 +378,14 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     } catch(const ConnectionException& e) {
         globalLog(RTT::Error, "Root: (RPC) Connection to '%s' could not be established: %s", 
                 remote_name.c_str(), e.what());
-        //sem_post(connectSem);
+        sem_post(modifyModuleListSem);
         return false;
     }
 
     connections.insert(pair<std::string, CorbaConnection*>(remote_name,con));
     globalLog(RTT::Info, "Root: (RPC) Connected to '%s'", remote_name.c_str());
-    //sem_post(connectSem);
+
+    sem_post(modifyModuleListSem);
     return true;
 }
 
@@ -523,8 +492,8 @@ void Module::serviceRemoved(sd::ServiceEvent se)
         loggerNames.erase(remote_id);
     }
 
+    sem_wait(modifyModuleListSem);
     std::map<std::string, ConnectionInterface*>::iterator it = connections.find(remote_id);
-    sem_wait(removeConnectionsSem);
     if(it != connections.end()) // Connection to 'remote_id' available.
     {
         // Disconnect and delete.
@@ -544,7 +513,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
     }
 
     serviceRemoved_(remote_id, remote_ior);
-    sem_post(removeConnectionsSem);
+    sem_post(modifyModuleListSem);
 }
 } // namespace modules
 
