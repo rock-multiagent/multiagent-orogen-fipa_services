@@ -399,20 +399,25 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior, uint
         return;
     }
 
-    // Connect to the first appropriate MTA (same environment ids).  
-    if(mta != NULL)
-    {
-        RTT::log(RTT::Info) << "MTA is already set for this component" << RTT::endlog();
-        return;
-    }
-    
     if (mod.getEnvID() != this->modID.getEnvID())
     {
-    	RTT::log(RTT::Info) << "WARNING: MTA for other environment than this (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
+    	RTT::log(RTT::Info) << "MTA for other environment than this '" << this->modID.getEnvID() << "' found: " << remote_id << RTT::endlog();
     	return;
     }
 
-    RTT::log(RTT::Info) << "MTA found for my environment (" << this->modID.getEnvID() << ") found: " << remote_id << RTT::endlog();
+    RTT::log(RTT::Info) << "MTA found for my environment '" << this->modID.getEnvID() << "' found: " << remote_id << RTT::endlog();
+    // Connect to the first appropriate MTA (same environment ids).  
+    if(mta != NULL)
+    {
+        RTT::log(RTT::Info) << "MTA is already set for this component -- will be overwritten" << RTT::endlog();
+        try {
+            mta->disconnect();
+        } catch(...)
+        {
+            RTT::log(RTT::Warning) << "MTA disconnecting failed" << RTT::endlog();
+        }
+        mta = NULL;
+    }
 
     CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior, buffer_size);
     try {
@@ -462,14 +467,7 @@ void Module::serviceAdded(sd::ServiceEvent se)
     sem_wait(modifyModuleListSem);
 
     std::map<std::string, ConnectionInterface*>::iterator it;
-    it = connections.find(remote_id);
-    if(it != connections.end())
-    {
-        globalLog(RTT::Info, "Root: Connection to %s already established.",remote_id.c_str());
-    	sem_post(modifyModuleListSem);
-        return;
-    }
-
+    // If this is a duplicate this has to be handled in serviceAdded_
     serviceAdded_(remote_id, remote_ior, mConnectionBufferSize );
     sem_post(modifyModuleListSem);
 }
@@ -507,6 +505,7 @@ void Module::serviceRemoved(sd::ServiceEvent se)
         // If its the MTA of this module, remove shortcut.
         if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
         {
+            mta->disconnect();
             mta = NULL;
             globalLog(RTT::Warning, "Root: My MTA has been removed.");
         }
