@@ -89,19 +89,15 @@ end
 
 export_types "std::vector<root/PortStats>"
 
-if ENV['FAMOS_SYSTEM_ID']
-    deployment_name = ENV['FAMOS_SYSTEM_ID']+'_'+'ROOT01'
-        deployment deployment_name do
-        mod = task(deployment_name, "root::Module").
-            priority('10').
-            periodic('0.001')
+deployment "test_root" do
+    do_not_install
+    mod = task("ROOT", "root::Module").
+        priority('10').
+        periodic('0.001')
 
-        # deprecated: 
-        #mod.module_name = 'A_ROOT_1'
-        mod.avahi_type = '_rimres._tcp'
-        mod.avahi_port = 12000
-        mod.avahi_ttl = 0
+    mod.avahi_type = '_test_root._tcp'
+    mod.avahi_port = 12000
+    mod.avahi_ttl = 0
 
-        add_default_logger
-    end
+    add_default_logger
 end
