@@ -14,6 +14,7 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
         std::string receiver_ior, uint32_t buffer_size) : 
         ConnectionInterface(),
         receiverIOR(receiver_ior),
+        bufferSize(buffer_size),
         taskContextSender(sender),
         controlTaskProxy(NULL),
         inputPort(NULL),
@@ -21,8 +22,7 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
         portsCreated(false),
         proxyCreated(false),
         receiverConnected(false),
-        portsConnected(false),
-        bufferSize(buffer_size)
+        portsConnected(false)
 {
     receiverName = receiver;
     connected = false;
