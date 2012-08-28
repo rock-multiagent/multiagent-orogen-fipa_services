@@ -501,14 +501,18 @@ void Module::serviceRemoved(sd::ServiceEvent se)
         {
             globalLog(RTT::Warning, "Root: Could not properly disconnect from %s. Still performing cleanup.", remote_id.c_str());
         }
+        delete it->second;
+        it->second = NULL;
         connections.erase(it);
 
         // If its the MTA of this module, remove shortcut.
         if(mod.getType() == "MTA" && mod.getEnvID() == this->modID.getEnvID())
         {
-            mta->disconnect();
-            mta = NULL;
-            globalLog(RTT::Warning, "Root: My MTA has been removed.");
+            if(mta) 
+            {  
+                mta = NULL;
+                globalLog(RTT::Warning, "Root: My MTA has been removed.");
+            }
         }
     }
 

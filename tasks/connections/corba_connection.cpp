@@ -123,12 +123,19 @@ bool CorbaConnection::disconnect()
     try {
         log(RTT::Debug) << "CorbaConnection::disconnect() " << RTT::endlog();
 
-        if(controlTaskProxy)
+        if(taskContextSender->hasPeer(controlTaskProxy->getName()))
         {
-            taskContextSender->removePeer(receiverIOR);
-            delete controlTaskProxy;
-            controlTaskProxy = NULL;
+            RTT::log(RTT::Debug) << "CorbaConnection: known peer '" << controlTaskProxy->getName() << "' will be removed" << RTT::endlog();
+            taskContextSender->removePeer(controlTaskProxy->getName());
+            if(controlTaskProxy)
+            {
+                delete controlTaskProxy;
+                controlTaskProxy = NULL;
+            }
+        } else {
+            RTT::log(RTT::Debug) << "CorbaConnection: peer '" << controlTaskProxy->getName() << "' is unknown" << RTT::endlog();
         }
+
         if(inputPort)
         {
             taskContextSender->ports()->removePort(inputPortName);
@@ -214,17 +221,32 @@ bool CorbaConnection::createPorts()
 bool CorbaConnection::createProxy()
 {
     proxyCreated = false;
-    if(controlTaskProxy != NULL)
+
+    // overwrite the last peer connection
+    if(taskContextSender->hasPeer(receiverName))
     {
-        taskContextSender->removePeer(receiverIOR);
-        delete controlTaskProxy;
-        controlTaskProxy = NULL;
+        RTT::log(RTT::Debug) << "CorbaConnection: known peer '" << receiverName << "' will be removed" << RTT::endlog();
+        taskContextSender->removePeer(receiverName);
+        if(controlTaskProxy)
+        {
+            delete controlTaskProxy;
+            controlTaskProxy = NULL;
+        }
+    } else {
+        RTT::log(RTT::Debug) << "CorbaConnection: peer '" << receiverName << "' is unknown" << RTT::endlog();
     }
 
     // Create Control Task Proxy.
     RTT::corba::TaskContextProxy::InitOrb(0, 0);
-    controlTaskProxy = RTT::corba::TaskContextProxy::
-            Create(receiverIOR, receiverIOR.substr(0,3) == "IOR");
+    try {
+        controlTaskProxy = RTT::corba::TaskContextProxy::
+                Create(receiverIOR, receiverIOR.substr(0,3) == "IOR");
+        RTT::log(RTT::Info) << "CorbaConnection: created proxy for IOR: '" << receiverIOR << "'" << RTT::endlog();
+    } catch(CORBA::OBJECT_NOT_EXIST& e)
+    {
+        RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for ior '" << receiverIOR << "' does not exist." << RTT::endlog();
+        return false;
+    }
 
     // Creating a one-directional connection from task_context to the peer. 
     if( !taskContextSender->addPeer(controlTaskProxy) )
