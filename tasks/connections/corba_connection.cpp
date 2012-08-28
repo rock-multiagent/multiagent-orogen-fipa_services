@@ -170,7 +170,7 @@ std::string CorbaConnection::read() //virtual
 {
     if(!connected)
     {
-        log(RTT::Info) << "Data can not be read, no connection available. " << 
+        log(RTT::Info) << "CorbaConnection: data can not be read, no connection available. " << 
             RTT::endlog();
         return false;
     }
@@ -209,10 +209,10 @@ bool CorbaConnection::createPorts()
     outputPort = new RTT::OutputPort<fipa::BitefficientMessage>(outputPortName);
 
     taskContextSender->ports()->addEventPort(inputPortName,*inputPort);
-    log(RTT::Info) << "Created event port: " << inputPortName << RTT::endlog();
+    log(RTT::Info) << "CorbaConnection: created event port: " << inputPortName << RTT::endlog();
 	
     taskContextSender->ports()->addPort(outputPortName, *outputPort);
-    log(RTT::Info) << "Created port: " << outputPortName << RTT::endlog();
+    log(RTT::Info) << "CorbaConnection: created port: " << outputPortName << RTT::endlog();
  
     portsCreated = true;
     return true;
@@ -250,7 +250,10 @@ bool CorbaConnection::createProxy()
 
     // Creating a one-directional connection from task_context to the peer. 
     if( !taskContextSender->addPeer(controlTaskProxy) )
+    {
+        RTT::log(RTT::Warning) << "CorbaConnection: adding peer failed" << RTT::endlog();
         return false;
+    }
     
     proxyCreated = true;
     return true;
