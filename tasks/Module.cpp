@@ -357,7 +357,9 @@ bool Module::sendMessage(std::string sender_id, std::string recv_id,
 bool Module::rpcCreateConnectPorts(std::string const& remote_name, 
         std::string const& remote_ior, boost::int32_t buffer_size)
 {
-    sem_wait(modifyModuleListSem);
+    // Sychronization is not needed, since we execute this in 'OwnThread'
+    RTT::log(RTT::Debug) << "(RPC) Create connect ports '" << remote_name << "' ior: '" << remote_ior << "' buffer_size: '" << buffer_size << "'" << RTT::endlog();
+
     // reestablish connection if the connection has already been established - prevent dangling
     // connections
     std::map<std::string, ConnectionInterface*>::iterator it = connections.find(remote_name);
@@ -367,6 +369,7 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
             remote_name.c_str());
 
         it->second->disconnect();
+        delete it->second;
         connections.erase(it);
     }
     
@@ -378,14 +381,12 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
     } catch(const ConnectionException& e) {
         globalLog(RTT::Error, "Root: (RPC) Connection to '%s' could not be established: %s", 
                 remote_name.c_str(), e.what());
-        sem_post(modifyModuleListSem);
         return false;
     }
 
     connections.insert(pair<std::string, CorbaConnection*>(remote_name,con));
     globalLog(RTT::Info, "Root: (RPC) Connected to '%s'", remote_name.c_str());
 
-    sem_post(modifyModuleListSem);
     return true;
 }
 
