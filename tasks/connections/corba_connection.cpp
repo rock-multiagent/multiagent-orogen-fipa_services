@@ -4,6 +4,7 @@
 #include <rtt/transports/corba/TaskContextServer.hpp>
 #include <rtt/transports/corba/TaskContextProxy.hpp>
 #include <rtt/internal/RemoteOperationCaller.hpp>
+#include <boost/cstdint.hpp>
 
 namespace root
 {
