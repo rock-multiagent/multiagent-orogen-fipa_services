@@ -91,26 +91,9 @@ bool Module::configureHook()
         return false;
     }
 
-    // NOTE: Setting of names of TaskContext do not work in RTT 1.X and in RTT 2.0
-    // We are using the deployment name instead, i.e. the deployment already provides
-    // the service name, i.e. instance and id correspond
-
-    // For disambiguation over multiple systems when using the same deployment
-    // we use the system id
-
-    // NOTE2: The deployment name is now set to: <FAMOS_SYSTEM_ID>_<NAME> during build.
-    // E.g.: sherpa_0_ROOT01 or sherpa_0_MTA. The avahi name equivalent.
-    /*
-    char* systemId = getenv("FAMOS_SYSTEM_ID");
-    std::string systemIdString(systemId);
-    if(systemIdString != "")
-	    systemIdString = this->getName()+ "_" + systemIdString;
-    else
-	    systemIdString = this->getName();
-    */	  
     modID = ModuleID(this->getName());
 
-    // Configure SD.
+    // Configure servicediscovery (SD)
     sd::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
     sc.setTTL(_avahi_ttl.get());
     sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
@@ -234,7 +217,7 @@ bool Module::isConnectedTo(std::string name)
 
 // Process message has to be overwritten by an inheriting
 // module
-bool Module::processMessage(std::string& message)
+bool Module::processMessage(const std::string& message)
 {
     // If not overwritten, just send all messages back to the sender.
     if(mta == NULL)
@@ -259,7 +242,7 @@ bool Module::processMessage(std::string& message)
             log(RTT::Info) << "Root: Received: " << content.at(0) << RTT::endlog();
         
         // Send answer if a sender has been defined.
-        std::vector<std::string>& sender_vec = fipa.getEntry("SENDER");
+        std::vector<std::string> sender_vec = fipa.getEntry("SENDER");
         if(sender_vec.size())
         {
             std::string sender = sender_vec.at(0);
@@ -286,8 +269,8 @@ bool Module::processMessage(std::string& message)
     return true;
 }
 
-bool Module::sendMessage(std::string sender_id, std::string recv_id, 
-        std::string msg_content, std::string conversation_id)
+bool Module::sendMessage(const std::string& sender_id, const std::string& recv_id, 
+        const std::string& msg_content, const std::string& conversation_id, const std::string& protocol, const std::string& language)
 {
     RTT::log(RTT::Debug) << "Root: send message sender_id '" << sender_id << "' recv_id '" << recv_id <<
         "' msg_content '" << msg_content << "' conversation_id '" << conversation_id << "'" << RTT::endlog();

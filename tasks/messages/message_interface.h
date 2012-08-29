@@ -60,7 +60,7 @@ class MessageInterface
         {
             entries.clear();
         }
-        inline int getSize()
+        inline int getSize() const
         {
             return entries.size();
         }
@@ -103,13 +103,13 @@ class MessageInterface
      * \param parameter_name Name of the parameter, depend on the used language.
      * \return Pointer to the entry-vector.
      */
-    std::vector<std::string>& getEntry(std::string const& parameter_name);
+    std::vector<std::string> getEntry(std::string const& parameter_name) const;
 
     /**
      * Returns the first entry of the vector or an empty string if 
      * there is no first entry.
      */
-    std::string getFirstEntry(std::string const& parameter_name);
+    std::string getFirstEntry(std::string const& parameter_name) const;
 
     /**
      * Parses the input string and fills the parameters-map.

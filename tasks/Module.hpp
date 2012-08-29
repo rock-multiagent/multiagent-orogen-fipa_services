@@ -169,14 +169,14 @@ friend class ModuleBase;
      * the sender.
      * \param message message content (e.g. bitefficient encoded fipa message)
      */
-    virtual bool processMessage(std::string& message);
+    virtual bool processMessage(const std::string& message);
 
     /**
      * Creates a new FipaMessage and sets the passed parameters.
      * You can define several receivers divided by spaces.
      */
-    bool sendMessage(std::string sender_id, std::string recv_id, 
-            std::string msg_content, std::string conversation_id);
+    bool sendMessage(const std::string& sender_id, const std::string& recv_id, 
+            const std::string& msg_content, const std::string& conversation_id, const std::string& protocol, const std::string& language);
 
     ////////////////////////////////RPC-METHODS//////////////////////////
     /**

@@ -35,9 +35,9 @@ void MessageInterface::clear(std::string const& parameter_names)
     }
 }
 
-std::vector<std::string>& MessageInterface::getEntry(std::string const& parameter_name)
+std::vector<std::string> MessageInterface::getEntry(std::string const& parameter_name) const
 {        
-    std::map<std::string, MessageParameter>::iterator it;
+    std::map<std::string, MessageParameter>::const_iterator it;
     it = parameters.find(parameter_name);
     // Parameter not available?
     if(it == parameters.end()) {
@@ -54,9 +54,9 @@ std::vector<std::string>& MessageInterface::getEntry(std::string const& paramete
     return it->second.entries;
 }
 
-std::string MessageInterface::getFirstEntry(std::string const& parameter_name)
+std::string MessageInterface::getFirstEntry(std::string const& parameter_name) const
 {
-    std::vector<std::string>& entries = getEntry(parameter_name);
+    std::vector<std::string> entries = getEntry(parameter_name);
     return entries.at(0);
 }
 
