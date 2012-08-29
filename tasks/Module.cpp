@@ -273,8 +273,29 @@ bool Module::sendMessage(const std::string& sender_id, const std::string& recv_i
         const std::string& msg_content, const std::string& conversation_id, const std::string& protocol, const std::string& language)
 {
     RTT::log(RTT::Debug) << "Root: send message sender_id '" << sender_id << "' recv_id '" << recv_id <<
-        "' msg_content '" << msg_content << "' conversation_id '" << conversation_id << "'" << RTT::endlog();
+        "' msg_content '" << msg_content << "' conversation_id '" << conversation_id << "' protocol: '" << protocol << "' language: '" << language << "'" << RTT::endlog();
 
+    // Preparing the message
+    std::string msg;        
+    try
+    {
+        // Create message.
+        FipaMessage fipa_;
+        fipa_.setMessage("SENDER "+sender_id);
+        fipa_.setMessage("RECEIVER BEGIN " +recv_id+ " END");
+        fipa_.setMessage("CONTENT BEGIN " +msg_content+ " END");
+        fipa_.setMessage("CONVERSATION-ID " +conversation_id);
+        fipa_.setMessage("PERFORMATIVE inform");
+        fipa_.setMessage("PROTOCOL " + protocol);
+        fipa_.setMessage("LANGUAGE " + language);
+        msg = fipa_.encode();
+    } catch (const MessageException& e) {
+        log(RTT::Error) << "MessageException: " << e.what() << RTT::endlog();
+        return false;
+    }
+
+
+    // Identifing the connection
     std::map<std::string, ConnectionInterface*>::iterator it;
     ConnectionInterface* recv_con = mta;
 
@@ -293,18 +314,25 @@ bool Module::sendMessage(const std::string& sender_id, const std::string& recv_i
                 return false;
             }
 
-            // Same environment: send directly, else: foward message to MTA
+            // Same environment: send directly, else: forward message to MTA
             // of the enviroment (if known)
             if(modID.getEnvID() == modID_.getEnvID())
             {
                 recv_name = recv_id;
+                log(RTT::Info) << "Root: 'self' is MTA for the receivers" << RTT::endlog();
+                return processMessage(msg);
             } else {
                 recv_name = modID_.getEnvID()+"_MTA";
             }
 
             it = connections.find(recv_name);
             if(it != connections.end())
+            {
+                log(RTT::Info) << "Root: found receiver connection to: '" << recv_name << "'" << RTT::endlog();
                 recv_con = it->second;
+            } else {
+                log(RTT::Info) << "Root: no receiver connection to: '" << recv_name << "' available." << RTT::endlog();
+            }
         }
     }
     
@@ -313,22 +341,6 @@ bool Module::sendMessage(const std::string& sender_id, const std::string& recv_i
     if(recv_con == NULL)
     {
         log(RTT::Error) << "Root: No suitable MTA to '" << recv_name << "' found." << RTT::endlog();
-        return false;
-    }
-
-    std::string msg;        
-    try
-    {
-        // Create message.
-        FipaMessage fipa_;
-        fipa_.setMessage("SENDER "+sender_id);
-        fipa_.setMessage("RECEIVER BEGIN " +recv_id+ " END");
-        fipa_.setMessage("CONTENT BEGIN " +msg_content+ " END");
-        fipa_.setMessage("CONVERSATION-ID " +conversation_id);
-        fipa_.setMessage("PERFORMATIVE inform");
-        msg = fipa_.encode();
-    } catch (const MessageException& e) {
-        log(RTT::Error) << "MessageException: " << e.what() << RTT::endlog();
         return false;
     }
 
