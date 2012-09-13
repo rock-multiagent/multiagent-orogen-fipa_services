@@ -95,7 +95,7 @@ void FipaMessage::decode(std::string const& message)
         parameters.find("REPLY-WITH")->second.addEntry(entry);
     if(!(entry = aclmsg.getInReplyTo()).empty()) 
         parameters.find("IN-REPLY-TO")->second.addEntry(entry);
-    if(!(entry = aclmsg.getReplyBy1()).empty()) 
+    if(!(entry = aclmsg.getReplyByString(true)).empty()) 
         parameters.find("REPLY-BY")->second.addEntry(entry);
 }
 
@@ -208,7 +208,8 @@ bool FipaMessage::createACLMessage()
         } else if(param == "IN-REPLY-TO") {
             aclMSG->setInReplyTo(it->second.entries[0]);
         } else if(param == "REPLY-BY") {
-            aclMSG->setReplyBy1(it->second.entries[0]);
+            base::Time time = base::Time::fromString(it->second.entries[0],base::Time::Milliseconds);
+            aclMSG->setReplyBy(time);
         } else {
             return false;
         }        
