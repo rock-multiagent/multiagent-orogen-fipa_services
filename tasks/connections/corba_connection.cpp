@@ -124,15 +124,19 @@ bool CorbaConnection::disconnect()
     try {
         log(RTT::Debug) << "CorbaConnection::disconnect() " << RTT::endlog();
 
+        if(!controlTaskProxy)
+        {
+            RTT::log(RTT::Debug) << "CorbaConnection: no control task proxy set -- disconnect() defaults to returning false" << RTT::endlog();
+            return false;
+        }
+
         if(taskContextSender->hasPeer(controlTaskProxy->getName()))
         {
             RTT::log(RTT::Debug) << "CorbaConnection: known peer '" << controlTaskProxy->getName() << "' will be removed" << RTT::endlog();
             taskContextSender->removePeer(controlTaskProxy->getName());
-            if(controlTaskProxy)
-            {
-                delete controlTaskProxy;
-                controlTaskProxy = NULL;
-            }
+            delete controlTaskProxy;
+            controlTaskProxy = NULL;
+            
         } else {
             RTT::log(RTT::Debug) << "CorbaConnection: peer '" << controlTaskProxy->getName() << "' is unknown" << RTT::endlog();
         }
