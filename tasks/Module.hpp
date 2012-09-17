@@ -176,7 +176,8 @@ friend class ModuleBase;
      * You can define several receivers divided by spaces.
      */
     bool sendMessage(const std::string& sender_id, const std::string& recv_id, 
-            const std::string& msg_content, const std::string& conversation_id, const std::string& protocol, const std::string& language);
+            const std::string& msg_content, const std::string& conversation_id, const std::string& protocol,
+            const std::string& language, const std::string& performative);
 
     ////////////////////////////////RPC-METHODS//////////////////////////
     /**

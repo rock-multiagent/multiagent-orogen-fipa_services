@@ -270,7 +270,7 @@ bool Module::processMessage(const std::string& message)
 }
 
 bool Module::sendMessage(const std::string& sender_id, const std::string& recv_id, 
-        const std::string& msg_content, const std::string& conversation_id, const std::string& protocol, const std::string& language)
+        const std::string& msg_content, const std::string& conversation_id, const std::string& protocol, const std::string& language, const std::string& performative)
 {
     RTT::log(RTT::Debug) << "Root: send message sender_id '" << sender_id << "' recv_id '" << recv_id <<
         "' msg_content '" << msg_content << "' conversation_id '" << conversation_id << "' protocol: '" << protocol << "' language: '" << language << "'" << RTT::endlog();
@@ -285,7 +285,7 @@ bool Module::sendMessage(const std::string& sender_id, const std::string& recv_i
         fipa_.setMessage("RECEIVER BEGIN " +recv_id+ " END");
         fipa_.setMessage("CONTENT BEGIN " +msg_content+ " END");
         fipa_.setMessage("CONVERSATION-ID " +conversation_id);
-        fipa_.setMessage("PERFORMATIVE inform");
+        fipa_.setMessage("PERFORMATIVE " + performative);
         fipa_.setMessage("PROTOCOL " + protocol);
         fipa_.setMessage("LANGUAGE " + language);
         msg = fipa_.encode();
