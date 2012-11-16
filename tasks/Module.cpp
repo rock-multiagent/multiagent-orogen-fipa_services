@@ -379,7 +379,7 @@ bool Module::rpcCreateConnectPorts(std::string const& remote_name,
         return false;
     }
 
-    connections.insert(pair<std::string, CorbaConnection*>(remote_name,con));
+    connections.insert(std::pair<std::string, CorbaConnection*>(remote_name,con));
     globalLog(RTT::Info, "Root: (RPC) Connected to '%s'", remote_name.c_str());
 
     return true;
@@ -423,7 +423,7 @@ void Module::serviceAdded_(std::string& remote_id, std::string& remote_ior, uint
         globalLog(RTT::Info, "Root: ConnectionException: %s", e.what());
         return;        
     }
-    connections.insert(pair<std::string, CorbaConnection*>(remote_id,cc));
+    connections.insert(std::pair<std::string, CorbaConnection*>(remote_id,cc));
     mta = cc;
     globalLog(RTT::Info, "Root: Connected to %s.", remote_id.c_str());
     
