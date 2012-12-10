@@ -251,6 +251,10 @@ bool CorbaConnection::createProxy()
     {
         RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for ior '" << receiverIOR << "' does not exist." << RTT::endlog();
         return false;
+    } catch(...)
+    {
+        RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior'" << receiverIOR << "' (probably) invalid." << RTT::endlog();
+        return false;
     }
 
     // Creating a one-directional connection from task_context to the peer. 
