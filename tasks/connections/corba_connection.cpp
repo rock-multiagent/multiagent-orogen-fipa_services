@@ -49,16 +49,16 @@ bool CorbaConnection::connect() //virtual
             return true;
         }
 
+        if(!createProxy())
+        {
+            throw ConnectionException("Sender proxy could not be created.");
+        }
+
         log(RTT::Debug) << "CorbaConnection::connect() - not yet connected. " << RTT::endlog();
 
         if(!createPorts())
         {
             throw ConnectionException("Sender ports could not be created.");
-        }
-
-        if(!createProxy())
-        {
-            throw ConnectionException("Sender proxy could not be created.");
         }
 
         if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&, boost::int32_t)>
@@ -82,6 +82,18 @@ bool CorbaConnection::connect() //virtual
     {
         log(RTT::Error) << "CorbaConnection::connect() - CORBA::COMM_FAILURE" << RTT::endlog();
         throw ConnectionException("CORBA::TRANSIENT");
+    } catch(CORBA::INV_OBJREF&)
+    {
+        log(RTT::Error) << "CorbaConnection::connect() - CORBA::INV_OBJREF" << RTT::endlog();
+        throw ConnectionException("CORBA::INV_OBJREF");
+    } catch(ConnectionException& e)
+    {
+        // forward only
+        throw;
+    } catch(...)
+    {
+        log(RTT::Error) << "CorbaConnection::connect() - unknown error" << RTT::endlog();
+        throw ConnectionException("Unknown error during connect");
     }
 }
 
@@ -91,14 +103,14 @@ bool CorbaConnection::connectLocal() //virtual
         if(connected)
             return true;
 
-        if(!createPorts())
-        {
-            throw ConnectionException("Sender ports could not be created.");
-        }
-
         if(!createProxy())
         {
             throw ConnectionException("Sender proxy could not be created.");
+        }
+
+        if(!createPorts())
+        {
+            throw ConnectionException("Sender ports could not be created.");
         }
 
         if(!connectPorts())
@@ -116,6 +128,17 @@ bool CorbaConnection::connectLocal() //virtual
     {
         log(RTT::Error) << "CorbaConnection::connectLocal() - CORBA::COMM_FAILURE" << RTT::endlog();
         throw ConnectionException("COBRA::TRANSIENT");
+    } catch(CORBA::INV_OBJREF&)
+    {
+        log(RTT::Error) << "CorbaConnection::connect() - CORBA::INV_OBJREF" << RTT::endlog();
+        throw ConnectionException("CORBA::INV_OBJREF");
+    } catch(ConnectionException& e)
+    {
+        throw;
+    } catch(...)
+    {
+        log(RTT::Error) << "CorbaConnection::connect() - unknown error" << RTT::endlog();
+        throw ConnectionException("Unknown error during connect");
     }
 }
 
@@ -251,9 +274,13 @@ bool CorbaConnection::createProxy()
     {
         RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for ior '" << receiverIOR << "' does not exist." << RTT::endlog();
         return false;
+    } catch(CORBA::INV_OBJREF& e)
+    {
+        RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior '" << receiverIOR << "' invalid: " << RTT::endlog();
+        return false;
     } catch(...)
     {
-        RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior'" << receiverIOR << "' (probably) invalid." << RTT::endlog();
+        RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior '" << receiverIOR << "' (probably) invalid." << RTT::endlog();
         return false;
     }
 
