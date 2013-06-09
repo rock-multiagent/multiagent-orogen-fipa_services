@@ -1,10 +1,10 @@
 /*
- * \file    RootModule.hpp
+ * \file    Task.hpp
  *  
  * \brief   Base class supporting module detection, configuration and dynamic port connection.
  *
- * \details Module will use ../configuration/module.xml for configuration and connect to
- *          the MTA with the same environment ID. Use \a connectToRemoteModule() to create
+ * \details Task will use ../configuration/module.xml for configuration and connect to
+ *          the MTA with the same environment ID. Use \a connectToRemoteTask() to create
  *          a dynamic connection. All the connection are stored within the \a remoteConnectionsMap.
  *          
  *          German Research Center for Artificial Intelligence\n
@@ -29,12 +29,11 @@
  * \author  Stefan.Haase@dfki.de, Stanislav.Gutev@dfki.de
  */
 
-#ifndef MODULES_ROOTMODULE_TASK_HPP
-#define MODULES_ROOTMODULE_TASK_HPP
+#ifndef MTS_TASK_HPP
+#define MTS_TASK_HPP
 
-#include "root/ModuleBase.hpp"
+#include "mts/TaskBase.hpp"
 
-#include <semaphore.h>
 #include <stdint.h>
 #include <stdarg.h>
 
@@ -44,11 +43,9 @@
 #include <string>
 
 #include <boost/utility.hpp>
-
+#include <boost/thread/shared_mutex.hpp>
 #include <service_discovery/service_discovery.h>
 
-#include "module_id.h"
-#include "messages/fipa_message.h"
 #include "connections/corba_connection.h"
 
 // A macro to disallow the copy constructor and operator= functions
@@ -60,35 +57,42 @@
 
 namespace sd = servicediscovery;
 
-namespace root
+namespace fipa {
+namespace service {
+namespace message_transport {
+    class MessageTransport;
+} // end message_transport
+} // end services
+} // end fipa
+
+namespace mts
 {
 class ConnectionInterface;
 
 /**
- * Basis Module.
  * Supports basic function for message generation and communication.
  * Connects its MTA automatically and allows to create the connection
  * to other modules dynamically.
  */
-class Module : public ModuleBase, boost::noncopyable
+class Task : public TaskBase, boost::noncopyable
 {
-friend class ModuleBase;
+friend class TaskBase;
  public:
     /**
      * Initializes parameters.
      * See configureHook() for further configurations.
      * \param name Name of the module. Will be set to \a _module_name in configureHook().
      */
-    Module(std::string const& name = "root::Module");
-    Module(std::string const& name, RTT::ExecutionEngine* engine); 
-    ~Module();
+    Task(std::string const& name = "mts::Task");
+    Task(std::string const& name, RTT::ExecutionEngine* engine); 
+    ~Task();
 
     ////////////////////////////////HOOKS////////////////////////////////
     /** This hook is called by Orocos when the state machine transitions
      * from Stopped to PreOperational, requiring the call to configureHook()
      * before calling start() again.
      */
-    void cleanupHook(){};
+    void cleanupHook();
 
     /** This hook is called by Orocos when the state machine transitions
      * from PreOperational to Stopped. If it returns false, then the
@@ -103,7 +107,7 @@ friend class ModuleBase;
      *     ...
      *   end
      */
-    bool configureHook();
+    virtual bool configureHook();
 
     /** This hook is called by Orocos when the component is in the
      * RunTimeError state, at each activity step. See the discussion in
@@ -123,7 +127,7 @@ friend class ModuleBase;
     /** This hook is called by Orocos when the state machine transitions
      * from Running to Stopped after stop() has been called.
      */
-    void stopHook();
+    // void stopHook();
 
     /** 
      * This hook is called by Orocos when the component is in the Running
@@ -146,22 +150,13 @@ friend class ModuleBase;
      */
     void updateHook();
 
+    /**
+     * Update information about another mts
+     * \return true if update succeeded, false otherwise
+     */
+    virtual bool updateAgentList(const std::string& otherMTS, const std::vector<std::string>& agentList);
+
  protected:
-    /**
-     * Converts the arguments into a string and calls the method 
-     * globalLog(RTT::LoggerLevel log_type, std::string message) to send 
-     * the message
-     * \param log-type RTT::Never, RTT::Fatal, RTT::Critical, RTT::Error, 
-     * RTT::Warning, RTT::Info, RTT::Debug, RTT::RealTime
-     * \WARNING Safe against buffer overflows?
-     */
-    virtual void globalLog(RTT::LoggerLevel log_type, const char* format, ...);
-
-    /**
-     * Returns true if a connection to the named module is available.
-     */
-    bool isConnectedTo(std::string name);
-
     /**
      * The message, which is read within the updateHook(), is passed here.
      * This function can be overwritten to process the incoming data.
@@ -169,24 +164,57 @@ friend class ModuleBase;
      * the sender.
      * \param message message content (e.g. bitefficient encoded fipa message)
      */
-    virtual bool processMessage(const std::string& message);
-
-    /**
-     * Creates a new FipaMessage and sets the passed parameters.
-     * You can define several receivers divided by spaces.
-     */
-    bool sendMessage(const std::string& sender_id, const std::string& recv_id, 
-            const std::string& msg_content, const std::string& conversation_id, const std::string& protocol,
-            const std::string& language, const std::string& performative);
+    bool deliverOrForwardLetter(const fipa::acl::Letter& letter);
 
     ////////////////////////////////RPC-METHODS//////////////////////////
-    /**
-     * RPC-method, used within 'connectToModule()' to create the ports on the
-     * remote module and to connect the remote output to the local input.
-     * \param buffer_size Message buffer size for the connection being created
+    /* Handler for the adding a receiver operation
      */
-	bool rpcCreateConnectPorts(std::string const & remote_name, 
-            std::string const & remote_ior, boost::int32_t buffer_size = 100);
+    virtual bool addReceiver(::std::string const & receiver);
+
+    /* Handler for the remove a receiver operation
+     */
+    virtual bool removeReceiver(::std::string const & receiver);
+
+    /**
+    * Add an output port for a specific receiver, portname and receivername
+    * will be identical
+    * \return true on success, false otherwise
+    */
+    bool addReceiverPort(RTT::base::OutputPortInterface* outputPort, const std::string& name);
+
+    /**
+     * Remove the output port for a specific receiver
+     * \return true on success, false otherwise
+     */
+    bool removeReceiverPort(const std::string& name);
+
+   
+    // Receiver ports for receivers that have been attached via the given operation
+    typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;
+    ReceiverPorts mReceivers;
+
+    /**
+     * Retrieve client list of this message transport service
+     * \return current list of attached receivers
+     */
+    std::vector<std::string> getReceivers();
+
+
+    bool isConnectedTo(const std::string& name) const;
+
+    /**
+     * Create a port connection to a remote MTS
+     */
+    bool rpcCreateConnectPorts(std::string const& remote_name, 
+        std::string const& remote_ior, boost::int32_t buffer_size);
+
+
+    ConnectionInterface* getConnectionToAgent(const std::string& name) const;
+
+    /**
+     * Triggers an agent list update on all connected mts
+     */
+    void triggerRemoteAgentListUpdate();
 
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
@@ -211,33 +239,28 @@ friend class ModuleBase;
     }
 
     ////////////////////////////////PARAMETER///////////////////////////
-    FipaMessage fipa; /// Fipa message generator.
-    std::map<std::string, ConnectionInterface*> connections; // Contains all connections.
-    /**
-     * Direct pointer to the connected Message Transport Service.
-     * Use 'mta != NULL' to check whether fipa messages could be sent.
-     */
-    ConnectionInterface* mta;
-    std::set<std::string> loggerNames; // All active logger modules.
+    
     /**
      * Used to publish and collect services (modules).
      */
-    sd::ServiceDiscovery* serviceDiscovery;
-    ModuleID modID; /// Contains the environment ID, the type and the name of the module.
-    sem_t* connectSem; /// Prevents a simultaneous connection between two or more modules.
-    sem_t* modifyModuleListSem; /// Prevents a simultaneous access to the list of modules
-    sem_t* removeConnectionsSem; /// Prevents a simulatenous access and removal of ports
+    sd::ServiceDiscovery* mServiceDiscovery;
 
-    std::map<std::string, base::Stats<double> > mPortStats;
+    std::map<std::string, ConnectionInterface*> mConnections; // Contains all connections.
+    mutable boost::shared_mutex mConnectionsMutex; /// Prevents a simultaneous access to the list of modules
+
+    std::map<std::string, ::base::Stats<double> > mPortStats;
     
     // Buffersize of the connection which will be created between dynamically added components
     uint32_t mConnectionBufferSize; 
 
+    fipa::service::message_transport::MessageTransport* mMessageTransport;
+    //fipa::service::service_directory::ServiceDirectory* mServiceDirectory;
+
  private:
     /**
-     * Use Module(std::string const& name) instead.
+     * Use Task(std::string const& name) instead.
      */
-    Module();
+    Task();
     ////////////////////////////////CALLBACKS////////////////////////////
     /**
      * Callback function adds the newly discovered service if its unknown.

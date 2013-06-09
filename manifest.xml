@@ -12,6 +12,7 @@
   <depend package="boost" />
   <depend package="tools/service_discovery" />
   <depend package="multiagent/fipa_acl" />
+  <depend package="multiagent/fipa_services" />
   <depend package="tools/logger" />
   <versioncontrol type="git" url="" />
   <export>

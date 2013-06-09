@@ -16,8 +16,8 @@
  * \author  Stefan.Haase@dfki.de
  */
 
-#ifndef MODULES_ROOT_CONNECTIONCORBA_HPP
-#define MODULES_ROOT_CONNECTIONCORBA_HPP
+#ifndef MTS_CONNECTIONCORBA_HPP
+#define MTS_CONNECTIONCORBA_HPP
 
 #define DISALLOW_COPY_AND_ASSIGN(TypeName) \
     TypeName(const TypeName&);             \
@@ -28,7 +28,7 @@
 #include <rtt/InputPort.hpp>
 
 #include "connection_interface.h"
-#include "fipa_msg_object.h"
+#include <fipa_acl/fipa_acl.h>
 
 /* Forward Declaration. */
 namespace RTT{
@@ -38,8 +38,11 @@ namespace corba {
 }
 }
 
-namespace root
+namespace mts
 {
+
+extern std::string FIPA_CORBA_TRANSPORT_SERVICE;
+
 class CorbaConnection : public ConnectionInterface
 {
  public:
@@ -61,14 +64,19 @@ class CorbaConnection : public ConnectionInterface
 
     bool disconnect(); //virtual
 
-    std::string read(); //virtual
+    fipa::acl::Letter read(); //virtual
 
     /**
      * Sends the data to the receiver, if the connection has been established.
      * \warning The return value will be true even if the data does not reach 
      * the receiver.
      */
-    bool send(std::string const& data); //virtual
+    bool send(fipa::acl::Letter const& data, fipa::acl::representation::Type representation); //virtual
+
+    /**
+     * Inform the remote end about an update list of clients
+     */
+    void updateAgentList(const std::vector<std::string>& agents); // virtual
 
  private:
     CorbaConnection();
@@ -92,6 +100,9 @@ class CorbaConnection : public ConnectionInterface
     template<class Signature>
     bool createConnectPortsOnReceiver(std::string function_name);
 
+    template<class Signature>
+    std::vector<std::string> getClients();
+
     /**
      * Connects the sender output port to the receiver sender port.
      * This requires valid ports (on the sender and the receiver) and a valid proxy.
@@ -99,20 +110,21 @@ class CorbaConnection : public ConnectionInterface
     bool connectPorts();
 
  private:
-    std::string senderIOR;
-    std::string receiverIOR;
-    std::string inputPortName;
-    std::string outputPortName;
-    uint32_t bufferSize;
+    std::string mSenderIOR;
+    std::string mReceiverIOR;
+    std::string mInputPortName;
+    std::string mOutputPortName;
+    uint32_t mBufferSize;
 
-    RTT::TaskContext* taskContextSender;
-    RTT::corba::TaskContextProxy* controlTaskProxy;
-    RTT::InputPort<fipa::BitefficientMessage>* inputPort;
-    RTT::OutputPort<fipa::BitefficientMessage>* outputPort; 
-    bool portsCreated;
-    bool proxyCreated;
-    bool receiverConnected; // Ports are created and output port is connected.
-    bool portsConnected;
+    RTT::TaskContext* mTaskContextSender;
+    RTT::corba::TaskContextProxy* mControlTaskProxy;
+    RTT::InputPort<fipa::SerializedLetter>* mInputPort;
+    RTT::OutputPort<fipa::SerializedLetter>* mOutputPort; 
+    bool mPortsCreated;
+    bool mProxyCreated;
+    bool mReceiverConnected; // Ports are created and output port is connected.
+    bool mPortsConnected;
+
 };
-} // namespace root
+} // namespace mts
 #endif

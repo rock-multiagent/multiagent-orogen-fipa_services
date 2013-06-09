@@ -1,0 +1,119 @@
+name 'mts'
+
+version '0.1'
+# Find documentation at http://www.rock-robotics.org
+version '0.2'
+# Switched to orogen for all modules. Because of that the
+# namespace name of every module has to be unique. So, the namespace
+# name will describe the module, the class name will always be 'Module'.
+version '0.3'
+# Revised role of root element. Changed to message transport service only
+version '0.4'
+
+using_library "fipa_acl"
+using_library "fipa_services"
+using_library "service_discovery"
+using_library "typelib"
+using_library "numeric"
+
+import_types_from "fipa_acl/message_generator/serialized_letter.h"
+import_types_from "base"
+import_types_from "PortStatsTypes.hpp"
+
+# The FIPA message bus relies on the application of so called MTS's
+# (Message Transport Services) - mainly to allow
+# for inter-robot communication.
+# 
+# One MTS per robot/environment is responsible for delivering message 
+# to a set of components, here identified by an environment id as part
+# which is part of the components name: <env-id>_<type>. 
+#
+# An MTS will be recognized by its type suffix: <env-id>_MTA, where
+# the <env-id> follows <robot-type>_<id> (thus the second underscore 
+# separates <env-id> and <type>, e.g. crex_0_MTA)
+#
+# An MTS allows to register 
+# receivers and will write the information to the receivers 
+# according to the receivers named in the FIPA message
+#
+# Warning: root modules and derived components should *NOT* be started with
+# the '--sd-domain' option. Instead the property 'avahi_type' should be used, 
+# to set domain and type (_udp,_tcp).
+# Otherwise a runtime condition exists between receiving events from the 
+# underlying service_discovery and registering callbacks for these events. 
+# !! -- this requires to be fixed in upcoming versions -- !!
+task_context "Task" do
+    needs_configuration
+
+    property('avahi_type', 'std::string').
+        doc 'Type of the service. Default is \'_rimres._tcp\'.'
+
+    property('avahi_port', 'int').
+        doc 'Port of the service. Default is 12000.'
+
+    property('avahi_ttl', 'int').
+        doc 'Time-To-Live. Default is 0.'
+
+    property('connection_buffer_size','int', 1000).
+        doc 'Buffer size of the connection which will be dynamically created between message transport services'
+
+    input_port("letters", "/fipa/SerializedLetter").
+        doc("Input port for FIPA letters, that will be routed according to the set receiver field").
+        needs_reliable_connection
+
+    dynamic_input_port(/\w+\-\>\w+/, "/fipa/SerializedLetter").
+        doc("Direct input port for the MTA (Message transport service)")
+
+    dynamic_output_port(/\w+\-\>\w+/, "/fipa/SerializedLetter").
+        doc("Output port to the MTA (Message transport service)")
+
+    dynamic_output_port(/.*/,"/fipa/SerializedLetter").
+        doc("Output ports will be of the receivers name")
+
+    output_port("port_stats", "std::vector<mts/PortStats>").
+        doc("Statistics on the messages that are processed on a specific connection")
+
+    port_driven
+
+    operation('rpcCreateConnectPorts').
+        argument('remote_name', 'std::string').
+        argument('remote_ior', 'std::string').
+        argument('buffer_size', 'int').
+        returns('bool').
+        doc('Creates and connects additional ports.')
+    
+    operation("addReceiver").
+        returns("bool").
+        argument("receiver", "/std/string/","the name of the receiver").
+        doc("Upon adding of a receiver, an new output port for this receiver is generated. Output port will be of receivers name (if successful)")
+
+    operation("removeReceiver").
+        returns("bool").
+        argument("receiver", "/std/string/","the name of the receiver").
+        doc("Upon removal of a receiver, the corresponding output port is removed")
+
+    operation("getReceivers").
+        returns("/std/vector</std/string >").
+        doc("Retrieve list of currently attached receivers")
+
+    operation("updateAgentList").
+        returns("bool").
+        argument("mts", "/std/string", "name of the mts that sends the update").
+        argument("agents", "/std/vector</std/string>", "the updated list of agents").
+        doc("Triggers an update of known client for all connected mts")
+end
+
+export_types "std::vector<mts/PortStats>"
+
+deployment "test_mts" do
+    do_not_install
+    mod = task("mts", "mts::Task").
+        priority('10').
+        periodic('0.001')
+
+    mod.avahi_type = '_test_mts._tcp'
+    mod.avahi_port = 12000
+    mod.avahi_ttl = 0
+
+    add_default_logger
+end

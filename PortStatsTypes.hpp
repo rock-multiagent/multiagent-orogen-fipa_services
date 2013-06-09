@@ -3,7 +3,7 @@
 
 #include <numeric/Stats.hpp>
 
-namespace root
+namespace mts
 {
      /**
      * Simple structure to collect some statistics about a port

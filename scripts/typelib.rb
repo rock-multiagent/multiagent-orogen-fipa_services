@@ -1,15 +1,15 @@
 # This is a typelib plugin which relies on the FipaMessage library 
-# It allows to send fipa messages from ruby to orocos ports of type
-# /fipa/BitefficientMessage
+# It allows to send fipa letters from ruby to orocos ports of type
+# /fipa/SerializedLetter
 begin 
     require 'fipa-message'
-	Typelib.convert_to_ruby '/fipa/BitefficientMessage' do |value|
+	Typelib.convert_to_ruby '/fipa/SerializedLetter' do |value|
 	  	# from_byte_array is defined in the rice extension of FipaMessage
 		FIPA::Utils.deserialize(value.data.to_a)
 	end
 
-	Typelib.convert_from_ruby FIPA::ACLMessage, '/fipa/BitefficientMessage' do |value, typelib_type|
-		# create an object of type '/fipa/BitefficientMessage'
+	Typelib.convert_from_ruby FIPA::ACLEnvelope, '/fipa/SerializedLetter' do |value, typelib_type|
+		# create an object of type '/fipa/SerialiedLetter
 		result = typelib_type.new
 
 		# assign our array to the vector
