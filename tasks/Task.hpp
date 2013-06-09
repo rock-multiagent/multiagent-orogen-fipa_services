@@ -214,7 +214,7 @@ friend class TaskBase;
     /**
      * Triggers an agent list update on all connected mts
      */
-    void triggerRemoteAgentListUpdate();
+    void triggerRemoteAgentListUpdate(const std::string& mts = "");
 
     ////////////////////////////////CALLBACKS////////////////////////////
     /**

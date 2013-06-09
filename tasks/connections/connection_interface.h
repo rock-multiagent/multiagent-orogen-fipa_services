@@ -123,7 +123,7 @@ class ConnectionInterface
     /**
      * Test whether a specific agent is attached to this connection, i.e. reachable
      */
-    bool isAttachedAgent(const std::string& name) const { return std::find(mAssociatedAgents.begin(),mAssociatedAgents.end(),name) != mAssociatedAgents.end(); }
+    bool isAssociatedAgent(const std::string& name) const { return std::find(mAssociatedAgents.begin(),mAssociatedAgents.end(),name) != mAssociatedAgents.end(); }
 
  protected:
     ConnectionInterface(){};

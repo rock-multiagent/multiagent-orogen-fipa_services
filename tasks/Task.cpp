@@ -158,7 +158,7 @@ bool Task::deliverOrForwardLetter(const fipa::acl::Letter& letter)
         {
             return nextReceiver->send(letter, fipa::acl::representation::BITEFFICIENT);
         } else {
-          return false;
+            return false;
         }
     }
     RTT::log(RTT::Error) << "DELIVERING: '" << letter.getACLMessage().getContent() << "'" << RTT::endlog();
@@ -171,7 +171,7 @@ ConnectionInterface* Task::getConnectionToAgent(const std::string& name) const
     std::map<std::string, ConnectionInterface*>::const_iterator it;
     for(;it != mConnections.end(); ++it)
     {
-        if(it->second->isAttachedAgent(name))
+        if(it->second->isAssociatedAgent(name))
         {
             return it->second;
         }
@@ -183,21 +183,10 @@ ConnectionInterface* Task::getConnectionToAgent(const std::string& name) const
 void Task::serviceAdded_(std::string& remote_id, std::string& remote_ior, uint32_t buffer_size)
 {
     CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior, buffer_size);
-    try {
-        cc->connect();
-    } catch(const ConnectionException& e)
-    {
-        RTT::log(RTT::Info) << "MessageTransportService: ConnectionException: '" << e.what() << "'" << RTT::endlog();
-        return;        
-    } catch(const InvalidService& e)
-    {
-        RTT::log(RTT::Info) << "MessageTransportService: Service '" << remote_id << "' is not an MessageTransportService: '" << e.what() << "'" << RTT::endlog();
-        return;        
-    }
+    cc->connect();
 
     mConnections.insert(std::pair<std::string, CorbaConnection*>(remote_id,cc));
     RTT::log(RTT::Info) << "MessageTransportService: Connected to '" << remote_id.c_str() << "'" << RTT::endlog();
-    
 }
 
 void Task::serviceRemoved_(std::string& remote_id, std::string& remote_ior)
@@ -224,11 +213,24 @@ void Task::serviceAdded(sd::ServiceEvent se)
     }
 
     // Do nothing if the connection has already been established.
-    boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
+    {
+        boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
+        // If this is a duplicate this has to be handled in serviceAdded_
 
-    std::map<std::string, ConnectionInterface*>::iterator it;
-    // If this is a duplicate this has to be handled in serviceAdded_
-    serviceAdded_(remote_id, remote_ior, mConnectionBufferSize );
+        try {
+            serviceAdded_(remote_id, remote_ior, mConnectionBufferSize );
+        } catch(const ConnectionException& e)
+        {
+            RTT::log(RTT::Info) << "MessageTransportService: ConnectionException: '" << e.what() << "'" << RTT::endlog();
+            return;        
+        } catch(const InvalidService& e)
+        {
+            RTT::log(RTT::Info) << "MessageTransportService: Service '" << remote_id << "' is not an MessageTransportService: '" << e.what() << "'" << RTT::endlog();
+            return;        
+        }
+    }
+
+    triggerRemoteAgentListUpdate(remote_id);
 }
 
 void Task::serviceRemoved(sd::ServiceEvent se)
@@ -242,22 +244,24 @@ void Task::serviceRemoved(sd::ServiceEvent se)
         return;
     }
 
-    boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
-    std::map<std::string, ConnectionInterface*>::iterator it = mConnections.find(remote_id);
-    if(it != mConnections.end()) // Connection to 'remote_id' available.
     {
-        // Disconnect and delete.
-        RTT::log(RTT::Info) << "MessageTransportService: Disconnecting from '" << remote_id.c_str() << "." << RTT::endlog();
-        if(!it->second->disconnect())
+        boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
+        std::map<std::string, ConnectionInterface*>::iterator it = mConnections.find(remote_id);
+        if(it != mConnections.end()) // Connection to 'remote_id' available.
         {
-            RTT::log(RTT::Warning) << "MessageTransportService: Could not properly disconnect from '" << remote_id << ". Still performing cleanup.";
+            // Disconnect and delete.
+            RTT::log(RTT::Info) << "MessageTransportService: Disconnecting from '" << remote_id.c_str() << "." << RTT::endlog();
+            if(!it->second->disconnect())
+            {
+                RTT::log(RTT::Warning) << "MessageTransportService: Could not properly disconnect from '" << remote_id << ". Still performing cleanup.";
+            }
+            delete it->second;
+            it->second = NULL;
+            mConnections.erase(it);
         }
-        delete it->second;
-        it->second = NULL;
-        mConnections.erase(it);
-    }
 
-    serviceRemoved_(remote_id, remote_ior);
+        serviceRemoved_(remote_id, remote_ior);
+    }
 }
 
 void Task::cleanupHook()
@@ -402,29 +406,48 @@ bool Task::rpcCreateConnectPorts(std::string const& remote_name,
 bool Task::updateAgentList(const std::string& mtsName, const std::vector<std::string>& agentList)
 {
     boost::shared_lock<boost::shared_mutex> lock(mConnectionsMutex);
-
     std::map<std::string, ConnectionInterface*>::iterator it = mConnections.find(mtsName);
     if(it == mConnections.end())
     {
+        RTT::log(RTT::Warning) << "MessageTransportService: updateAgentList failed, since mts '" << mtsName << "' is not known to this mts" << RTT::endlog();
         return false;
     } else {
-        it->second->updateAgentList(agentList);
+        it->second->setAssociatedAgents(agentList);
+        std::vector<std::string>::const_iterator it = agentList.begin();
+        std::string agentListString;
+        for(; it != agentList.end(); ++it)
+        {
+            agentListString += *it;
+            agentListString += ",";
+        }
+
+        RTT::log(RTT::Info) << "Updated agent list: mts: '" << mtsName << "' with associated agents: '" << agentListString << "'" << RTT::endlog();
         return true;
     }
 }
 
-void Task::triggerRemoteAgentListUpdate()
+void Task::triggerRemoteAgentListUpdate(const std::string& mts)
 {
+    // Retrieve current list of receivers and send this information 
+    // to all associated MTS
     std::vector<std::string> receivers = getReceivers();
-    boost::shared_lock<boost::shared_mutex> lock(mConnectionsMutex);
 
+    boost::shared_lock<boost::shared_mutex> lock(mConnectionsMutex);
     std::map<std::string, ConnectionInterface*>::iterator it = mConnections.begin();
     for(; it != mConnections.end(); ++it)
     {
-        it->second->updateAgentList(receivers);
+        if(!mts.empty())
+        {
+            if(mts == it->first)
+            {
+                it->second->updateAgentList(receivers);
+                return;
+            }
+        } else {
+            it->second->updateAgentList(receivers);
+        }
     }
 }
-
 
 } // namespace mts
 
