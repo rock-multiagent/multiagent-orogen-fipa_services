@@ -4,10 +4,9 @@ include Orocos
 
 Orocos.initialize
 
-deployment_name = 'test_mts'
 prefix = ARGV[0]
 
-Orocos.run deployment_name , :wait => 10, :cmdline_args => { :prefix => prefix } do |p1|
+Orocos.run "mts::Task" => "#{prefix}mts" , :wait => 10, :cmdline_args => { :prefix => prefix } do |p1|
 
 begin
     mts_module = p1.task "#{prefix}mts"
