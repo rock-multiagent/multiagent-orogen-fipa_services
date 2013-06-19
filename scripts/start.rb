@@ -6,10 +6,10 @@ Orocos.initialize
 
 prefix = ARGV[0]
 
-Orocos.run "mts::Task" => "#{prefix}mts" , :wait => 10, :cmdline_args => { :prefix => prefix } do |p1|
+Orocos.run "mts::Task" => "#{prefix}mts" , :wait => 10, :cmdline_args => { :prefix => prefix }, :valgrind => false do |p1|
 
 begin
-    mts_module = p1.task "#{prefix}mts"
+    mts_module = TaskContext.get "#{prefix}mts"
 rescue Orocos::NotFound
     print 'Deployment not found.'
     raise
@@ -21,5 +21,8 @@ end
     mts_module.configure
     mts_module.start
 
-    Readline::readline("Press enter to exit")
+    while true
+        sleep 1
+        mts_module.trigger
+    end
 end 

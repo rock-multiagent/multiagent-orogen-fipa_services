@@ -75,13 +75,6 @@ task_context "Task" do
 
     port_driven
 
-    operation('rpcCreateConnectPorts').
-        argument('remote_name', 'std::string').
-        argument('remote_ior', 'std::string').
-        argument('buffer_size', 'int').
-        returns('bool').
-        doc('Creates and connects additional ports.')
-    
     operation("addReceiver").
         returns("bool").
         argument("receiver", "/std/string/","the name of the receiver").
@@ -105,9 +98,11 @@ end
 
 export_types "std::vector<mts/PortStats>"
 
-deployment "test_mts" do
+(0..9).each do |i|
+
+deployment "mts_#{i}" do
     do_not_install
-    mod = task("mts", "mts::Task").
+    mod = task("mts_#{i}", "mts::Task").
         priority('10').
         periodic('0.001')
 
@@ -116,4 +111,6 @@ deployment "test_mts" do
     mod.avahi_ttl = 0
 
     add_default_logger
+end
+
 end

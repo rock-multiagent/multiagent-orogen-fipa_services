@@ -30,8 +30,8 @@ CorbaConnection::CorbaConnection(RTT::TaskContext* sender, std::string receiver,
     mConnected = false;
     mSenderName = sender->getName();
     mSenderIOR = RTT::corba::TaskContextServer::getIOR(sender);
-    mInputPortName = mReceiverName + "->" + mSenderName + "_port";    
-    mOutputPortName = mSenderName + "->" + mReceiverName + "_port";
+    mInputPortName = "letters";    
+    mOutputPortName = mReceiverName; 
 }
             
 CorbaConnection::~CorbaConnection()
@@ -55,23 +55,13 @@ bool CorbaConnection::connect() //virtual
             throw ConnectionException("Sender proxy could not be created.");
         }
 
-        log(RTT::Debug) << "CorbaConnection::connect() - not yet connected. " << RTT::endlog();
-
-        if(!createPorts())
-        {
-            throw ConnectionException("Sender ports could not be created.");
-        }
-
-        if(!createConnectPortsOnReceiver<bool(std::string const&, std::string const&, boost::int32_t)>
-                ("rpcCreateConnectPorts"))
-        {
-            throw ConnectionException("Receiver ports could not be created/connected.");
-        }
-
-        if(!connectPorts())
-        {
-            throw ConnectionException("Sender ports could not be connected.");
-        }
+//        log(RTT::Debug) << "CorbaConnection::connect() - not yet connected. " << RTT::endlog();
+//        if(!connectPorts())
+//        {
+//            throw ConnectionException("Sender ports could not be connected.");
+//        } else {
+//            log(RTT::Debug) << "CorbaConnection::connect() -- connected. " << RTT::endlog();
+//        }
 
         mConnected = true;
         return true;
@@ -87,6 +77,16 @@ bool CorbaConnection::connect() //virtual
     {
         log(RTT::Error) << "CorbaConnection::connect() - CORBA::INV_OBJREF" << RTT::endlog();
         throw ConnectionException("CORBA::INV_OBJREF");
+
+    } catch(CORBA::SystemException& ex) 
+    {
+        log(RTT::Error) << "Caught CORBA::SystemException " << ex._name() << RTT::endlog();
+        throw ConnectionException("CORBA::SystemException");
+    } 
+    catch(CORBA::Exception& ex) 
+    {
+        log(RTT::Error) << "Caught CORBA::Exception: " << ex._name() << RTT::endlog();
+        throw ConnectionException("CORBA::Exception");
     } catch(ConnectionException& e)
     {
         // forward only
@@ -94,52 +94,7 @@ bool CorbaConnection::connect() //virtual
     } catch(...)
     {
         log(RTT::Error) << "CorbaConnection::connect() - unknown error" << RTT::endlog();
-        throw ConnectionException("Unknown error during connect");
-    }
-}
-
-bool CorbaConnection::connectLocal() //virtual
-{
-    try {
-        if(mConnected)
-            return true;
-
-        if(!createProxy())
-        {
-            throw ConnectionException("Sender proxy could not be created.");
-        }
-
-        if(!createPorts())
-        {
-            throw ConnectionException("Sender ports could not be created.");
-        }
-
-        if(!connectPorts())
-        {
-            throw ConnectionException("Sender ports could not be connected.");
-        }
-        mConnected = true;
-        return true;
-
-    } catch(CORBA::COMM_FAILURE&)
-    {
-        log(RTT::Error) << "CorbaConnection::connectLocal() - CORBA::COMM_FAILURE" << RTT::endlog();
-        throw ConnectionException("COBRA::COMM_FAILURE");
-    } catch(CORBA::TRANSIENT&)
-    {
-        log(RTT::Error) << "CorbaConnection::connectLocal() - CORBA::COMM_FAILURE" << RTT::endlog();
-        throw ConnectionException("COBRA::TRANSIENT");
-    } catch(CORBA::INV_OBJREF&)
-    {
-        log(RTT::Error) << "CorbaConnection::connect() - CORBA::INV_OBJREF" << RTT::endlog();
-        throw ConnectionException("CORBA::INV_OBJREF");
-    } catch(ConnectionException& e)
-    {
-        throw;
-    } catch(...)
-    {
-        log(RTT::Error) << "CorbaConnection::connect() - unknown error" << RTT::endlog();
-        throw ConnectionException("Unknown error during connect");
+       throw ConnectionException("Unknown error during connect");
     }
 }
 
@@ -154,30 +109,6 @@ bool CorbaConnection::disconnect()
             return false;
         }
 
-        if(mTaskContextSender->hasPeer(mControlTaskProxy->getName()))
-        {
-            RTT::log(RTT::Debug) << "CorbaConnection: known peer '" << mControlTaskProxy->getName() << "' will be removed" << RTT::endlog();
-            mTaskContextSender->removePeer(mControlTaskProxy->getName());
-            delete mControlTaskProxy;
-            mControlTaskProxy = NULL;
-            
-        } else {
-            RTT::log(RTT::Debug) << "CorbaConnection: peer '" << mControlTaskProxy->getName() << "' is unknown" << RTT::endlog();
-        }
-
-        if(mInputPort)
-        {
-            mTaskContextSender->ports()->removePort(mInputPortName);
-            delete mInputPort;
-            mInputPort = NULL;
-        }
-        if(mOutputPort)
-        {
-            mTaskContextSender->ports()->removePort(mOutputPortName);
-            delete mOutputPort;
-            mOutputPort = NULL;
-        }
-        
         mConnected = false;
         return true;
     } catch(CORBA::COMM_FAILURE&)
@@ -187,6 +118,15 @@ bool CorbaConnection::disconnect()
     } catch(CORBA::TRANSIENT&)
     {
         log(RTT::Error) << "CorbaConnection::disconnect() - CORBA::COMM_FAILURE" << RTT::endlog();
+        return false;
+    } catch(CORBA::SystemException& ex) 
+    {
+        log(RTT::Error) << "Caught CORBA::SystemException " << ex._name() << RTT::endlog();
+        return false;
+    } 
+    catch(CORBA::Exception& ex) 
+    {
+        log(RTT::Error) << "Caught CORBA::Exception: " << ex._name() << RTT::endlog();
         return false;
     } catch(...)
     {
@@ -227,48 +167,48 @@ bool CorbaConnection::send(fipa::acl::Letter const& data, fipa::acl::representat
 ////////////////////////////////////////////////////////////////////
 //                           PRIVATE                              //
 ////////////////////////////////////////////////////////////////////
-bool CorbaConnection::createPorts()
-{
-    // Do nothing if the ports have already been created.
-    if(mPortsCreated)
-        return true;
-
-    mInputPort = new RTT::InputPort<fipa::SerializedLetter>(mInputPortName);
-    mOutputPort = new RTT::OutputPort<fipa::SerializedLetter>(mOutputPortName);
-
-    mTaskContextSender->ports()->addEventPort(mInputPortName,*mInputPort);
-    log(RTT::Info) << "CorbaConnection: created event port: " << mInputPortName << RTT::endlog();
-	
-    mTaskContextSender->ports()->addPort(mOutputPortName, *mOutputPort);
-    log(RTT::Info) << "CorbaConnection: created port: " << mOutputPortName << RTT::endlog();
- 
-    mPortsCreated = true;
-    return true;
-}
-
 bool CorbaConnection::createProxy()
 {
     mProxyCreated = false;
 
-    // overwrite the last peer connection
-    if(mTaskContextSender->hasPeer(mReceiverName))
-    {
-        RTT::log(RTT::Debug) << "CorbaConnection: known peer '" << mReceiverName << "' will be removed" << RTT::endlog();
-        mTaskContextSender->removePeer(mReceiverName);
-        if(mControlTaskProxy)
-        {
-            delete mControlTaskProxy;
-            mControlTaskProxy = NULL;
-        }
-    } else {
-        RTT::log(RTT::Debug) << "CorbaConnection: peer '" << mReceiverName << "' is unknown" << RTT::endlog();
-    }
-
     // Create Control Task Proxy.
     RTT::corba::TaskContextProxy::InitOrb(0, 0);
+    //RTT::corba::ApplicationServer::InitOrb(0,0);
     try {
+//        RTT::log(RTT::Error) << "CorbaConnection: Creating proxy" << RTT::endlog();
+//
+//        if(CORBA::is_nil(RTT::corba::ApplicationServer::orb))
+//            throw std::runtime_error("Corba is not initialized");
+//
+//        // Use the ior to create the task object reference,
+//        CORBA::Object_var task_object;
+//        try
+//        {
+//            task_object = RTT::corba::ApplicationServer::orb->string_to_object ( mReceiverIOR.c_str() );
+//        }
+//        catch(CORBA::SystemException &e)
+//        {
+//            throw std::runtime_error("given IOR " + mReceiverIOR + " is not valid");
+//        }
+//            
+//        // Then check we can actually access it
+//        //RTT::corba::CTaskContext_var mRemoteTask;
+//        // Now downcast the object reference to the appropriate type
+//        mRemoteTask = RTT::corba::CTaskContext::_narrow (task_object.in());
+//        
+//        if(CORBA::is_nil( mRemoteTask ))
+//            throw std::runtime_error("cannot narrow task context.");
+//
+//        bool forceRemote = true;
+//        mControlTaskProxy = RTT::corba::TaskContextProxy::
+//            Create(mRemoteTask, forceRemote);
+
+        // With multiple host starting up simulatenously, this call leads to a segfault
+        // in CServer->getName(), i.e. the corba implementation. 
+        // Trying to workaround by going through the application server first to retrieve reference
         mControlTaskProxy = RTT::corba::TaskContextProxy::
-                Create(mReceiverIOR, mReceiverIOR.substr(0,3) == "IOR");
+         Create(mReceiverName); //mReceiverIOR, mReceiverIOR.substr(0,3) == "IOR");
+
         RTT::log(RTT::Info) << "CorbaConnection: created proxy for IOR: '" << mReceiverIOR << "'" << RTT::endlog();
     } catch(CORBA::OBJECT_NOT_EXIST& e)
     {
@@ -278,63 +218,23 @@ bool CorbaConnection::createProxy()
     {
         RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior '" << mReceiverIOR << "' invalid: " << RTT::endlog();
         return false;
-    } catch(...)
+    } /*catch(...)
     {
         RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior '" << mReceiverIOR << "' (probably) invalid." << RTT::endlog();
         return false;
-    }
+    }*/
 
-    if( mControlTaskProxy->provides()->hasService(::mts::FIPA_CORBA_TRANSPORT_SERVICE))
+    if(mControlTaskProxy->ready())
     {
-        std::string errorMsg = "Remote service does not match message transport service type: '";
-        RTT::log(RTT::Error) << errorMsg << RTT::endlog();
-        throw InvalidService(errorMsg);
-    }
-
-    // Creating a one-directional connection from task_context to the peer. 
-    if( !mTaskContextSender->addPeer(mControlTaskProxy) )
-    {
-        RTT::log(RTT::Warning) << "CorbaConnection: adding peer failed" << RTT::endlog();
-        return false;
+        if(!mControlTaskProxy->provides()->hasService(::mts::FIPA_CORBA_TRANSPORT_SERVICE))
+        {
+            std::string errorMsg = "Remote service does not match message transport service type: '" + ::mts::FIPA_CORBA_TRANSPORT_SERVICE + "'";
+            RTT::log(RTT::Error) << errorMsg << RTT::endlog();
+            //throw InvalidService(errorMsg);
+        }
     }
     
     mProxyCreated = true;
-    return true;
-}
-
-template<class Signature>
-bool CorbaConnection::createConnectPortsOnReceiver(std::string function_name)
-{
-    mReceiverConnected = false;
-    if(!mPortsCreated || !mProxyCreated)
-        return false;
-    
-	// WARNING: no typesafety any more
-	if(!mControlTaskProxy->ready())
-		return false;
-
-    RTT::OperationCaller<Signature> create_receiver_ports = mControlTaskProxy->getOperation(function_name);
-
-    // Receiver function is ready?
-    if(!create_receiver_ports.ready())
-    {
-	log(RTT::Info) << "Receiver port not ready. " << RTT::endlog();
-        return false;
-    }
- 
-    // Create receiver connection.
-    if(!create_receiver_ports.call(mSenderName, mSenderIOR, mBufferSize))
-    {
-	log(RTT::Info) << "Receiver port creation failed. " << RTT::endlog();
-        return false;
-    }
-    
-    // Refresh control task proxy to get to know the new receiver ports.
-    if(!createProxy())
-        return false;
-	
-
-    mReceiverConnected = true;
     return true;
 }
 
@@ -347,25 +247,29 @@ bool CorbaConnection::connectPorts()
         return false;
     }
 
+    mOutputPort = dynamic_cast<RTT::OutputPort<fipa::SerializedLetter>* >(mTaskContextSender->ports()->getPort(mOutputPortName) );
+    assert(mOutputPort);
+
     // Get pointer to the input port of the receiver.
     RTT::base::InputPortInterface* remoteinputport = NULL;
     remoteinputport = dynamic_cast<RTT::base::InputPortInterface*>( mControlTaskProxy->ports()->
-            getPort(mOutputPortName) );
-    log(RTT::Info) << "Remote output port is: " << mOutputPortName << RTT::endlog();
+            getPort(mInputPortName) );
+
+    log(RTT::Info) << "Remote input port is: " << mInputPortName << RTT::endlog();
 
     if(remoteinputport == NULL)
     {
-	log(RTT::Info) << "Remote output port" << RTT::endlog();
+        log(RTT::Info) << "Remote input port is not available" << RTT::endlog();
         return false;
     }
 
     // Connect the output port of the sender to the input port of the receiver.
     // buffer(LOCKED/LOCK_FREE, buffer size, keep last written value, 
     // true=pull(problem here) false=push)
-    if(!mOutputPort->connectTo(remoteinputport, 
+    if(!mOutputPort->createConnection(*remoteinputport, 
             RTT::ConnPolicy::buffer(mBufferSize, RTT::ConnPolicy::LOCKED, false, false)))
     {
-	log(RTT::Info) << "Local output port could not be connected to remote input port" << RTT::endlog();
+        log(RTT::Info) << "Local output port '" << mOutputPort->getName() << "' could not be connected to remote input port '" << remoteinputport->getName() << "' of mts '" << mReceiverName << "'" << RTT::endlog();
         return false;
     }
 
@@ -375,6 +279,10 @@ bool CorbaConnection::connectPorts()
 
 void CorbaConnection::updateAgentList(const std::vector<std::string>& agents)
 {
+    if(!mControlTaskProxy)
+    {
+        createProxy();
+    }
     assert(mControlTaskProxy);
 
     RTT::OperationCaller<bool(const std::string&, const std::vector<std::string>& )> updateAgentList = mControlTaskProxy->getOperation("updateAgentList");

@@ -203,12 +203,8 @@ friend class TaskBase;
     bool isConnectedTo(const std::string& name) const;
 
     /**
-     * Create a port connection to a remote MTS
+     * Retrieve connection to Agent
      */
-    bool rpcCreateConnectPorts(std::string const& remote_name, 
-        std::string const& remote_ior, boost::int32_t buffer_size);
-
-
     ConnectionInterface* getConnectionToAgent(const std::string& name) const;
 
     /**
@@ -239,7 +235,6 @@ friend class TaskBase;
     }
 
     ////////////////////////////////PARAMETER///////////////////////////
-    
     /**
      * Used to publish and collect services (modules).
      */

@@ -26,12 +26,16 @@ Task::Task(std::string const& name) : TaskBase(name),
         mServiceDiscovery(NULL),
         mConnectionsMutex()
 {
+
+    Service service(mts::FIPA_CORBA_TRANSPORT_SERVICE, this);
 }
 
 Task::Task(std::string const& name, RTT::ExecutionEngine* engine) : TaskBase(name, engine), 
         mServiceDiscovery(NULL),
         mConnectionsMutex()
 {
+
+    Service service(mts::FIPA_CORBA_TRANSPORT_SERVICE, this);
 }
 
 Task::~Task()
@@ -59,25 +63,6 @@ bool Task::configureHook()
         return false;
     }
 
-    sd::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
-    sc.setTTL(_avahi_ttl.get());
-    sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
-    mServiceDiscovery = new sd::ServiceDiscovery();
-
-    // Add callback functions.
-    mServiceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
-        &Task::serviceAdded));
-    mServiceDiscovery->removedComponentConnect(sigc::mem_fun(*this, 
-        &Task::serviceRemoved));
-    // Start SD.
-    try{
-        mServiceDiscovery->start(sc);
-    } catch(const std::exception& e) {
-        RTT::log(RTT::Error) << e.what() << RTT::endlog();
-    }
-
-   RTT::log(RTT::Info) << "MessageTransportService: Started service '" << this->getName() << ". Avahi-type: '" << _avahi_type.get() << "'. Port: " << _avahi_port.get() << ". TTL: " << _avahi_ttl.get() << "." << RTT::endlog();
-
     mConnectionBufferSize = _connection_buffer_size.get();
     return true;
 }
@@ -93,14 +78,35 @@ bool Task::startHook()
     if(!TaskBase::startHook())
         return false;
 
-    Service service(mts::FIPA_CORBA_TRANSPORT_SERVICE, this);
+
+    sd::ServiceConfiguration sc(this->getName(), _avahi_type.get(), _avahi_port.get());
+    sc.setTTL(_avahi_ttl.get());
+    sc.setDescription("IOR", rc::TaskContextServer::getIOR(this));
+    mServiceDiscovery = new sd::ServiceDiscovery();
+
+    // Add callback functions.
+    mServiceDiscovery->addedComponentConnect(sigc::mem_fun(*this, 
+        &Task::serviceAdded));
+    mServiceDiscovery->removedComponentConnect(sigc::mem_fun(*this, 
+        &Task::serviceRemoved));
+
+    // Start SD.
+    try{
+        mServiceDiscovery->start(sc);
+    } catch(const std::exception& e) {
+        RTT::log(RTT::Error) << e.what() << RTT::endlog();
+    }
+
+   RTT::log(RTT::Info) << "MessageTransportService: Started service '" << this->getName() << ". Avahi-type: '" << _avahi_type.get() << "'. Port: " << _avahi_port.get() << ". TTL: " << _avahi_ttl.get() << "." << RTT::endlog();
+
+
 
     return true;
 }
 
 void Task::updateHook()
 {
-    boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
+    using namespace fipa::acl;
 
     const RTT::DataFlowInterface::Ports& ports = this->ports()->getPorts();
 
@@ -114,15 +120,50 @@ void Task::updateHook()
             uint32_t count = 0;
 			while( letter_port->read(serializedLetter) == RTT::NewData)
 			{
-                RTT::log(RTT::Info) << "MessageTransportService: Received new message on port " << portName << "' of size '" << serializedLetter.getVector().size() << "'" << RTT::endlog();
+                RTT::log(RTT::Debug) << "MessageTransportService: Received new message on port " << portName << "' of size '" << serializedLetter.getVector().size() << "'" << RTT::endlog();
 
                 fipa::acl::Letter letter = serializedLetter.deserialize();
+                fipa::acl::ACLBaseEnvelope be = letter.flattened();
+                RTT::log(RTT::Debug) << "Receivers: " << be.getTo() << "content: " << letter.getACLMessage().getContent() << RTT::endlog();
                 mMessageTransport->handle(letter);
                 ++count;
 			}
             mPortStats[portName].update(count);
 		}
     }
+
+    // Handle open connection request
+    std::vector<std::string> remote_ids;
+    {
+        boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
+        std::map<std::string, ConnectionInterface*>::iterator it = mConnections.begin();
+        for(; it != mConnections.end(); ++it)
+        {
+            ConnectionInterface* connection = it->second;
+            if(!connection->isConnected())
+            {
+                try {
+                    addReceiver(connection->getReceiverName());
+                    if( connection->connect() )
+                    {
+                        // Add port for receiver
+                        RTT::log(RTT::Info) << "MessageTransportService: Connected to '" << connection->getReceiverName() << "'" << RTT::endlog();
+                    }
+                    remote_ids.push_back(connection->getReceiverName());
+                } catch(...)
+                {
+                    RTT::log(RTT::Debug) << "Connection failed" << RTT::endlog();
+                }
+            }
+        }
+    }
+
+    //std::vector<std::string>::const_iterator cit = remote_ids.begin();
+    //for(; cit != remote_ids.end(); ++cit)
+    //{
+    //    //triggerRemoteAgentListUpdate(*cit);
+    //}
+
     std::map<std::string, ::base::Stats<double> >::iterator statsIt = mPortStats.begin();
     std::vector<mts::PortStats> portStats;
     for(; statsIt != mPortStats.end(); ++statsIt)
@@ -147,34 +188,73 @@ bool Task::deliverOrForwardLetter(const fipa::acl::Letter& letter)
     using namespace fipa::acl;
     // Identifing the connection
     ACLBaseEnvelope envelope = letter.flattened();
-    AgentIDList receivers = envelope.getIntendedReceivers();
+    // TODO: use intended receivers and update the field
+    //AgentIDList receivers = envelope.getIntendedReceivers();
+    AgentIDList receivers = envelope.getTo();
+
     AgentIDList::const_iterator rit = receivers.begin();
+
+
     for(; rit != receivers.end(); ++rit)
     {
+        // Handle local delivery
+        ReceiverPorts::iterator localPortsIt =  mReceivers.find(rit->getName());
+        if(localPortsIt != mReceivers.end())
+        {
+            RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(localPortsIt->second);
+            if(clientPort)
+            {
+                fipa::SerializedLetter serializedLetter(letter, fipa::acl::representation::BITEFFICIENT);
+                clientPort->write(serializedLetter);
+                RTT::log(RTT::Debug) << "MessageTransportService: local delivery to '"<< rit->getName() << "' performed" << RTT::endlog();
+                continue;
+            } else {
+                RTT::log(RTT::Error) << "MessageTransportService: Client port with unexpected type" << RTT::endlog();
+                return false;
+            }
+        }
+
         // Check for each receiver if we have a direct or indirect 
         // connection to it
         ConnectionInterface* nextReceiver = getConnectionToAgent(rit->getName());
         if(nextReceiver)
         {
-            return nextReceiver->send(letter, fipa::acl::representation::BITEFFICIENT);
+            if(!nextReceiver->send(letter, fipa::acl::representation::BITEFFICIENT))
+            {
+                RTT::log(RTT::Error) << "MessageTransportService: message forwarding to mts '" << nextReceiver->getReceiverName() << "' failed" << RTT::endlog();
+                return false;
+            } else {
+                RTT::log(RTT::Debug) << "MessageTransportService: message forwarding to mts '" << nextReceiver->getReceiverName() << "' succeeded" << RTT::endlog();
+                continue;
+            }
         } else {
             return false;
         }
     }
-    RTT::log(RTT::Error) << "DELIVERING: '" << letter.getACLMessage().getContent() << "'" << RTT::endlog();
 
-    return true;
+    return trigger();
 }
 
 ConnectionInterface* Task::getConnectionToAgent(const std::string& name) const
 {
-    std::map<std::string, ConnectionInterface*>::const_iterator it;
+    boost::shared_lock<boost::shared_mutex> lock(mConnectionsMutex);
+
+    std::map<std::string, ConnectionInterface*>::const_iterator it = mConnections.begin();
     for(;it != mConnections.end(); ++it)
     {
-        if(it->second->isAssociatedAgent(name))
+        if(!it->second)
+        {
+            RTT::log(RTT::Info) << "MessageTransportService: getConnectionToAgent: connection does not exist for agent '" << name << "'" << RTT::endlog();
+            continue;
+        }
+
+        if(it->second->isConnected() && it->second->isAssociatedAgent(name))
         {
             return it->second;
+        } else {
+            RTT::log(RTT::Debug) << "MessageTransportService: getContentToAgent: agent '" << name << "' is not associated with mts '" << it->second << RTT::endlog();
         }
+        
     }
     return NULL;
 }
@@ -183,10 +263,10 @@ ConnectionInterface* Task::getConnectionToAgent(const std::string& name) const
 void Task::serviceAdded_(std::string& remote_id, std::string& remote_ior, uint32_t buffer_size)
 {
     CorbaConnection* cc = new CorbaConnection(this, remote_id, remote_ior, buffer_size);
-    cc->connect();
+    // do not connect here, but in update hook
+    //cc->connect();
 
     mConnections.insert(std::pair<std::string, CorbaConnection*>(remote_id,cc));
-    RTT::log(RTT::Info) << "MessageTransportService: Connected to '" << remote_id.c_str() << "'" << RTT::endlog();
 }
 
 void Task::serviceRemoved_(std::string& remote_id, std::string& remote_ior)
@@ -216,21 +296,19 @@ void Task::serviceAdded(sd::ServiceEvent se)
     {
         boost::unique_lock<boost::shared_mutex> lock(mConnectionsMutex);
         // If this is a duplicate this has to be handled in serviceAdded_
-
         try {
             serviceAdded_(remote_id, remote_ior, mConnectionBufferSize );
         } catch(const ConnectionException& e)
         {
             RTT::log(RTT::Info) << "MessageTransportService: ConnectionException: '" << e.what() << "'" << RTT::endlog();
-            return;        
+            return;
         } catch(const InvalidService& e)
         {
             RTT::log(RTT::Info) << "MessageTransportService: Service '" << remote_id << "' is not an MessageTransportService: '" << e.what() << "'" << RTT::endlog();
-            return;        
+            return;
         }
     }
-
-    triggerRemoteAgentListUpdate(remote_id);
+    trigger();
 }
 
 void Task::serviceRemoved(sd::ServiceEvent se)
@@ -298,7 +376,6 @@ std::vector<std::string> Task::getReceivers()
     return receivers;
 }
 
-
 bool Task::addReceiver(::std::string const & receiver)
 {
     std::string output_port_name(receiver);
@@ -325,7 +402,7 @@ bool Task::addReceiver(::std::string const & receiver)
     bool success = addReceiverPort(out_port, receiver);
     if(success)
     {
-        triggerRemoteAgentListUpdate();
+        //triggerRemoteAgentListUpdate();
     }
 
     return success;
@@ -348,6 +425,7 @@ bool Task::addReceiverPort(RTT::base::OutputPortInterface* outputPort, const std
 {
     ports()->addPort(outputPort->getName(), *outputPort);
     mReceivers[receiver] = outputPort;
+    RTT::log(RTT::Debug) << "MessageTransportService: Receiver port '" << receiver << "' added" << RTT::endlog();
     return true;
 }
 
@@ -366,41 +444,6 @@ bool Task::removeReceiverPort(const std::string& receiver)
     log(Info) << "No output port named '" << receiver << "' registered" << endlog();
 
     return false;
-}
-
-bool Task::rpcCreateConnectPorts(std::string const& remote_name, 
-        std::string const& remote_ior, boost::int32_t buffer_size)
-{
-    // Sychronization is not needed, since we execute this in 'OwnThread'
-    RTT::log(RTT::Debug) << "(RPC) Create connect ports '" << remote_name << "' ior: '" << remote_ior << "' buffer_size: '" << buffer_size << "'" << RTT::endlog();
-
-    // reestablish connection if the connection has already been established - prevent dangling
-    // connections
-    std::map<std::string, ConnectionInterface*>::iterator it = mConnections.find(remote_name);
-    if(it != mConnections.end())
-    {
-        RTT::log(RTT::Warning) << "MessageTransportService: (RPC) Connection to '"
-            << remote_name << "' already established - disconnecting first" << RTT::endlog();
-
-        it->second->disconnect();
-        delete it->second;
-        mConnections.erase(it);
-    }
-    
-    // Create the ports and the proxy and use the proxy to connect 
-    // the local output to the remote input.
-    CorbaConnection* con = new CorbaConnection(this, remote_name, remote_ior, buffer_size);
-    try {
-        con->connectLocal();
-    } catch(const ConnectionException& e) {
-        RTT::log(RTT::Error) << "MessageTransportService: (RPC) Connection to '" << remote_name << "' could not be established: '" << e.what() << "'" << RTT::endlog(); 
-        return false;
-    }
-
-    mConnections.insert(std::pair<std::string, CorbaConnection*>(remote_name,con));
-    RTT::log(RTT::Info) << "MessageTransportService: (RPC) Connected to '" << remote_name << "'" << RTT::endlog();
-
-    return true;
 }
 
 bool Task::updateAgentList(const std::string& mtsName, const std::vector<std::string>& agentList)

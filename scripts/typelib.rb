@@ -3,20 +3,25 @@
 # /fipa/SerializedLetter
 begin 
     require 'fipa-message'
-	Typelib.convert_to_ruby '/fipa/SerializedLetter' do |value|
-	  	# from_byte_array is defined in the rice extension of FipaMessage
-		FIPA::Utils.deserialize(value.data.to_a)
+	Typelib.convert_to_ruby '/fipa/SerializedLetter', FIPA::ACLEnvelope do |typelib_value|
+        case typelib_value.representation
+        when :BITEFFICIENT
+		    return FIPA::Utils.deserialize_envelope(typelib_value.data.to_a)
+        when :UNKNOWN
+            return FIPA::ACLEnvelope.new
+        else
+            raise ArgumentError, "Typelib: extension 'mts' does not support other representations than BITEFFICIENT"
+        end
 	end
 
 	Typelib.convert_from_ruby FIPA::ACLEnvelope, '/fipa/SerializedLetter' do |value, typelib_type|
-		# create an object of type '/fipa/SerialiedLetter
-		result = typelib_type.new
-
-		# assign our array to the vector
-		# conversion between vector and array is supported by typelib
-		# so we don't have to do anything else here
-		result.data = FIPA::Utils.serialize(value)
-		result
+		# create an object of type '/fipa/SerializedLetter
+        puts "Serialize envelope"
+		letter = typelib_type.new
+        letter.data = FIPA::Utils.serialize_envelope(value)
+        letter.representation = :BITEFFICIENT
+        letter.timestamp = Time.now
+        letter
 	end
 
 rescue LoadError

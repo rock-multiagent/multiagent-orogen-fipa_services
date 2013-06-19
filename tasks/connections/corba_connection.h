@@ -29,6 +29,8 @@
 
 #include "connection_interface.h"
 #include <fipa_acl/fipa_acl.h>
+#include <rtt/transports/corba/TaskContextServer.hpp>
+#include <rtt/transports/corba/TaskContextProxy.hpp>
 
 /* Forward Declaration. */
 namespace RTT{
@@ -56,12 +58,6 @@ class CorbaConnection : public ConnectionInterface
      */
     bool connect(); //virtual
 
-    /**
-     * Create and connect the ports of this local module.
-     * Same as connect() without createConnectPortsOnReceiver().
-     */
-    bool connectLocal();
-
     bool disconnect(); //virtual
 
     fipa::acl::Letter read(); //virtual
@@ -82,23 +78,11 @@ class CorbaConnection : public ConnectionInterface
     CorbaConnection();
     DISALLOW_COPY_AND_ASSIGN(CorbaConnection);
 
-    bool createPorts();
-
     /** 
      * Creates the proxy (connection) to the other module.
      * Recreates the proxy if it already exists. 
      */
     bool createProxy();
-
-    /**
-     * Creates and connects the ports on the receiver-module.
-     * This requires valid ports and a valid proxy.
-     * \param function_name Name of the orogen function on the 
-     * receiver-module which creates the ports and the connection. 
-     * \param Signature E.g. bool(std::string const&, std::string const &).
-     */
-    template<class Signature>
-    bool createConnectPortsOnReceiver(std::string function_name);
 
     template<class Signature>
     std::vector<std::string> getClients();
@@ -118,6 +102,7 @@ class CorbaConnection : public ConnectionInterface
 
     RTT::TaskContext* mTaskContextSender;
     RTT::corba::TaskContextProxy* mControlTaskProxy;
+//    RTT::corba::CTaskContext_var mRemoteTask;
     RTT::InputPort<fipa::SerializedLetter>* mInputPort;
     RTT::OutputPort<fipa::SerializedLetter>* mOutputPort; 
     bool mPortsCreated;
