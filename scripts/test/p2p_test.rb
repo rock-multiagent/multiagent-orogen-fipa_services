@@ -27,10 +27,14 @@ class MTS
         output_port = orocos_task.port(otherMTS.name)
         input_port = otherMTS.orocos_task.port("letters")
 
+        output_sd_port = orocos_task.local_service_directory
+        input_sd_port = otherMTS.orocos_task.port("service_directories")
+
         #puts "CONNECTION #{name} to #{otherMTS.name}"
         #puts "o: #{output_port} i: #{input_port}"
 
         output_port.connect_to input_port, :type => :buffer, :size => 100
+        output_sd_port.connect_to input_sd_port, :type => :buffer, :size => 100
     end
 
     def start
@@ -98,7 +102,6 @@ Orocos.run "fipa_services_test", :wait => 1, :valgrind => false do
     end
 
     all_mts.each { |m| m.start }
-#    all_mts.each { |m| m.orocos_task.publishConnectionStatus }
 
     puts "All mts connected and started"
     Readline::readline("Press ENTER to attach agents")
@@ -130,7 +133,7 @@ Orocos.run "fipa_services_test", :wait => 1, :valgrind => false do
         agents.each do |a|
             a.read_next_letter
         end
-        sleep 1
+        sleep 0.1
     end
         
     Readline::readline("Press ENTER to proceed")

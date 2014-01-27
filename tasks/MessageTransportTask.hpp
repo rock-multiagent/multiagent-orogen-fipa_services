@@ -10,7 +10,9 @@
 #include <boost/thread/shared_mutex.hpp>
 
 namespace fipa {
-namespace service {
+namespace services {
+    class ServiceDirectory;
+
 namespace message_transport {
     class MessageTransport;
 } // namespace message_transport
@@ -61,7 +63,11 @@ underlying service_discovery and registering callbacks for these events.
         mutable boost::shared_mutex mConnectionsMutex; /// Prevents a simultaneous access to the list of modules
         mutable boost::shared_mutex mServiceChangeMutex; /// Prevents a simulatenous change of the service
 
-        fipa::service::message_transport::MessageTransport* mMessageTransport;
+        fipa::services::message_transport::MessageTransport* mMessageTransport;
+        fipa::services::ServiceDirectory* mGlobalServiceDirectory;
+        fipa::services::ServiceDirectory* mLocalServiceDirectory;
+
+        base::Time mLocalServiceDirectoryTimestamp;
 
         /* Upon adding of a receiver, a new output port for this receiver is generated. Output port will be of receivers name (if successful)
          */
@@ -74,10 +80,6 @@ underlying service_discovery and registering callbacks for these events.
         /* Upon removal of a receiver, the corresponding output port is removed
          */
         virtual bool removeReceiver(::std::string const & receiver);
-
-        /* Triggers an update of known client for all connected mts
-         */
-        virtual void publishConnectionStatus();
 
         /**
         * Add an output port for a specific receiver, portname and receivername
@@ -104,14 +106,6 @@ underlying service_discovery and registering callbacks for these events.
         // Receiver ports for receivers that have been attached via the given operation
         typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;
         ReceiverPorts mReceivers;
-
-        std::vector<std::string> mLocalReceivers;
-
-        /**
-         * Check whether receiver is local or not
-         * \return true if the receiver is local, false otherwise
-         */
-        bool isLocalReceiver(const std::string& name) { return std::find(mLocalReceivers.begin(), mLocalReceivers.end(), name) != mLocalReceivers.end(); }
 
     public:
         /** TaskContext constructor for MessageTransportTask

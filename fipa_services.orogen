@@ -16,6 +16,7 @@ using_library "fipa_acl"
 using_library "fipa_services"
 
 import_types_from "fipa_acl/message_generator/serialized_letter.h"
+import_types_from "fipa_services/ServiceDirectoryEntry.hpp"
 import_types_from "base"
 
 # The FIPA message bus relies on the application of so called MTS's
@@ -47,6 +48,17 @@ task_context "MessageTransportTask" do
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
         needs_reliable_connection
 
+    input_port("service_directories", "/fipa/services/ServiceDirectoryList").
+        doc("Input port to retrieve service directories of other MessageTransports")
+
+    output_port("global_service_directory", "/fipa/services/ServiceDirectoryList").
+        keep_last_written_value(true).
+        doc("Output port of the services this MessageTransport is directly attached to")
+
+    output_port("local_service_directory", "/fipa/services/ServiceDirectoryList").
+        keep_last_written_value(true).
+        doc("Output port of the services this MessageTransport is directly attached to")
+
     dynamic_input_port(/\w+\-\>\w+/, "/fipa/SerializedLetter").
         doc("Direct input port for the MTA (Message transport service)")
 
@@ -72,9 +84,6 @@ task_context "MessageTransportTask" do
     operation("getReceivers").
         returns("/std/vector</std/string >").
         doc("Retrieve list of currently attached receivers")
-
-    operation("publishConnectionStatus").
-        doc("Triggers an update of the connection status (known clients) for all connected mts")
 end
 
 deployment "fipa_services_test" do
