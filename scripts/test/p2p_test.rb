@@ -2,15 +2,15 @@ require 'readline'
 require 'orocos'
 include Orocos
 
-Orocos.initialize
-
 class MTS
     attr_accessor :name
     attr_accessor :orocos_task
+    attr_accessor :autoconnect
 
     def initialize(name, orocos_task = nil)
         @name = name
         @orocos_task = orocos_task
+        @autoconnect = false
     end
 
     def getAllOthers(otherMTS)
@@ -30,14 +30,12 @@ class MTS
         output_sd_port = orocos_task.local_service_directory
         input_sd_port = otherMTS.orocos_task.port("service_directories")
 
-        #puts "CONNECTION #{name} to #{otherMTS.name}"
-        #puts "o: #{output_port} i: #{input_port}"
-
         output_port.connect_to input_port, :type => :buffer, :size => 100
         output_sd_port.connect_to input_sd_port, :type => :buffer, :size => 100
     end
 
     def start
+        orocos_task.autoconnect = @autoconnect
         orocos_task.configure
         orocos_task.start
     end
@@ -77,37 +75,43 @@ class Agent
 end
 
 all_mts = Array.new
-(0..4).each do |i|
+(0..2).each do |i|
     mts = MTS.new("mts_#{i}")
     all_mts << mts
 end
 
-Orocos.run "fipa_services_test", :wait => 1, :valgrind => false do 
-    Readline::readline("Press ENTER to proceed")
+
+Orocos.initialize
+Orocos.run "fipa_services_test", :cmdline_args => { "sd-domain" => "_test_tt._tcp" }, :wait => 20, :valgrind => false do 
     # Resolve orocos tasks
     begin
         all_mts.each do |mts|
             mts.orocos_task = TaskContext.get mts.name
+            mts.autoconnect = true
         end
     rescue Orocos::NotFound
         print 'Deployment not found.'
         raise
     end
-    
+  
     all_mts.each do |mts|
-        others = mts.getAllOthers(all_mts)
-        others.each do |otherMTS|
-            mts.connectToMTS otherMTS
+        if not mts.autoconnect
+            others = mts.getAllOthers(all_mts)
+            others.each do |otherMTS|
+                mts.connectToMTS otherMTS
+            end
         end
     end
 
-    all_mts.each { |m| m.start }
+    all_mts.each do |m| 
+        m.start
+    end
 
     puts "All mts connected and started"
     Readline::readline("Press ENTER to attach agents")
 
     agents = Array.new
-    (0..4).each do |i|
+    (0..2).each do |i|
         agent = Agent.new("agent_#{i}")
         agents << agent
         agent.attach_to_mts(all_mts[i])

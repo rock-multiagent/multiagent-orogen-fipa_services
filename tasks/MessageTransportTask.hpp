@@ -7,7 +7,8 @@
 
 #include <map>
 #include <vector>
-#include <boost/thread/shared_mutex.hpp>
+#include <boost/thread.hpp>
+#include <service_discovery/ServiceDiscovery.hpp>
 
 namespace fipa {
 namespace services {
@@ -60,7 +61,7 @@ underlying service_discovery and registering callbacks for these events.
     {
 	friend class MessageTransportTaskBase;
     protected:
-        mutable boost::shared_mutex mConnectionsMutex; /// Prevents a simultaneous access to the list of modules
+        mutable boost::mutex mConnectToMTSMutex; 
         mutable boost::shared_mutex mServiceChangeMutex; /// Prevents a simulatenous change of the service
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
@@ -68,6 +69,10 @@ underlying service_discovery and registering callbacks for these events.
         fipa::services::ServiceDirectory* mLocalServiceDirectory;
 
         base::Time mLocalServiceDirectoryTimestamp;
+
+        // Receiver ports for receivers that have been attached via the given operation
+        typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;
+        ReceiverPorts mReceivers;
 
         /* Upon adding of a receiver, a new output port for this receiver is generated. Output port will be of receivers name (if successful)
          */
@@ -103,9 +108,20 @@ underlying service_discovery and registering callbacks for these events.
          */
         bool deliverOrForwardLetter(const fipa::acl::Letter& letter);
 
-        // Receiver ports for receivers that have been attached via the given operation
-        typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;
-        ReceiverPorts mReceivers;
+        /**
+         * Service added callback handler
+         */
+        void serviceAdded(servicediscovery::avahi::ServiceEvent event);
+
+        /**
+         * Service removed callback handler
+         */
+        void serviceRemoved(servicediscovery::avahi::ServiceEvent event);
+
+        /**
+         * Connect to another MTS using a known ior
+         */
+        void connectToMTS(const std::string& serviceName, const std::string& ior);
 
     public:
         /** TaskContext constructor for MessageTransportTask

@@ -5,11 +5,14 @@
 #include <time.h>
 #include <unistd.h>
 #include <boost/bind.hpp>
-#include <boost/thread/locks.hpp>
+#include <boost/thread.hpp>
 
 #include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/ServiceDirectory.hpp>
 #include <rtt/transports/corba/TaskContextServer.hpp>
+#include <rtt/transports/corba/TaskContextProxy.hpp>
+
+#include <service_discovery/ServiceDiscovery.hpp>
 
 namespace rc = RTT::corba;
 
@@ -61,6 +64,30 @@ bool MessageTransportTask::configureHook()
     // register the default transport
     mMessageTransport->registerTransport("default-corba-transport", boost::bind(&MessageTransportTask::deliverOrForwardLetter,this,_1));
 
+    // Handling autoconnect
+    if(_autoconnect.get())
+    {
+        using namespace servicediscovery::avahi;
+        try {
+            // Register callback to handle new announcements of services
+            ServiceDiscovery::registerCallbacks(getName(), sigc::mem_fun(*this, &MessageTransportTask::serviceAdded), sigc::mem_fun(*this, &MessageTransportTask::serviceRemoved));
+        } catch(const std::runtime_error& e)
+        {
+            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << " : Could not register callback." << RTT::endlog();
+            return false;
+        }
+
+        // Check for already announced services
+        std::map<std::string, ServiceDescription> availableServices = ServiceDiscovery::getVisibleServices(SearchPattern(".*","TASK_MODEL",this->getModelName()));
+        std::map<std::string, ServiceDescription>::const_iterator cit = availableServices.begin();
+        for(; cit != availableServices.end(); ++cit)
+        {
+            ServiceDescription description = cit->second;
+            std::string serviceName = description.getName();
+            const std::string ior = description.getDescription("IOR");
+            connectToMTS(serviceName, ior);
+        }
+    }
     return true;
 }
 
@@ -99,8 +126,8 @@ void MessageTransportTask::updateHook()
     while(_service_directories.read(directoryUpdate) == RTT::NewData)
     {
         mGlobalServiceDirectory->mergeSelectively(directoryUpdate, fipa::services::ServiceDirectoryEntry::LOCATOR);
-        _global_service_directory.write(mGlobalServiceDirectory->getAll());
     }
+    _global_service_directory.write(mGlobalServiceDirectory->getAll());
 
     // Check if new receives have been registered or have been removed between
     // now and the last update
@@ -123,14 +150,20 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
     ACLBaseEnvelope envelope = letter.flattened();
     AgentIDList receivers = envelope.getIntendedReceivers();
     AgentIDList::const_iterator rit = receivers.begin();
+
+    // For each intended receiver, try to deliver. 
+    // If it is a local client, deliver locally, otherwise forward to the known locator, which is an MTS in this context
     for(; rit != receivers.end(); ++rit)
     {
         RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : deliverOrForwardLetter to: " << rit->getName() << RTT::endlog();
 
         // Handle delivery
+        // The name of the next destination, can be an intermediate receiver
         std::string receiverName = rit->getName();
+        // The intended receiver, i.e. name of the final destination
         std::string intendedReceiverName = receiverName;
 
+        // Check for local receivers, or indentify locator
         fipa::services::ServiceDirectoryList list = mLocalServiceDirectory->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, false);
         if(list.empty())
         {
@@ -148,6 +181,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
             RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : receiver '" << receiverName << "' is locally attached'" << RTT::endlog();
         }
 
+        // Deliver the message to the next destination -- the corresponding receiver needs to have a dedicated output port available on this MTS
         ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
         if(portsIt == mReceivers.end())
         {
@@ -251,18 +285,23 @@ bool MessageTransportTask::removeReceiver(::std::string const & receiver)
     using namespace fipa::services;
     if(removeReceiverPort(receiver))
     {
-        ServiceDirectoryList list = mLocalServiceDirectory->search(getName(), ServiceDirectoryEntry::LOCATOR);
+        ServiceDirectoryList list = mLocalServiceDirectory->search(getName(), ServiceDirectoryEntry::LOCATOR, false);
         for(size_t i = 0; i < list.size(); ++i)
         {
             if( list[i].getName() == receiver)
             {
-                mLocalServiceDirectory->deregisterService(receiver, ServiceDirectoryEntry::NAME);
+                try {
+                    mLocalServiceDirectory->deregisterService(receiver, ServiceDirectoryEntry::NAME);
+                    trigger();
+                    return true;
+                } catch(const NotFound& e)
+                {
+                    return false;
+                }
             }
         }
     }
 
-    // Update service directory
-    trigger();
     return false;
 }
 
@@ -293,6 +332,87 @@ bool MessageTransportTask::removeReceiverPort(const std::string& receiver)
     RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : No output port named '" << receiver << "' registered" << RTT::endlog();
 
     return false;
+}
+
+void MessageTransportTask::serviceAdded(servicediscovery::avahi::ServiceEvent se)
+{
+    std::string serviceName = se.getServiceConfiguration().getName();
+    std::string serviceTaskModel = se.getServiceConfiguration().getDescription("TASK_MODEL");
+    std::string ior = se.getServiceConfiguration().getDescription("IOR");
+    if(serviceTaskModel == this->getModelName())
+    {
+        connectToMTS(serviceName, ior);
+    }
+}
+
+void MessageTransportTask::connectToMTS(const std::string& serviceName, const std::string& ior)
+{
+    boost::unique_lock<boost::mutex> lock(mConnectToMTSMutex);
+    if(serviceName != getName())
+    {
+        try {
+            // Connect to the remote MTS using only static ports of the remote MTS
+            if( addReceiver(serviceName, false) )
+            {
+                RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : connect to MTS: " << serviceName << RTT::endlog();
+
+                RTT::corba::TaskContextProxy* taskProxy = 0;
+                try {
+                    taskProxy = RTT::corba::TaskContextProxy::
+                            Create(ior, ior.substr(0,3) == "IOR");
+                    RTT::log(RTT::Debug) << "CorbaConnection: created proxy for IOR: '" << ior << "'" << RTT::endlog();
+                } catch(CORBA::OBJECT_NOT_EXIST& e)
+                {
+                    RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for ior '" << ior << "' does not exist." << RTT::endlog();
+                    return;
+                } catch(CORBA::INV_OBJREF& e)
+                {
+                    RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior '" << ior << "' invalid: " << RTT::endlog();
+                    return;
+                } catch(...)
+                {
+                    RTT::log(RTT::Warning) << "CorbaConnection: creating proxy failed: object for  ior '" << ior << "' (probably) invalid." << RTT::endlog();
+                    return;
+                }
+
+                RTT::base::PortInterface* remoteLettersPort = taskProxy->getPort("letters");
+                RTT::base::PortInterface* remoteServiceDiscoveriesPort = taskProxy->getPort("service_directories");
+
+                assert(remoteLettersPort);
+                assert(remoteServiceDiscoveriesPort);
+
+                RTT::base::PortInterface* localMTSPort = this->getPort(serviceName);
+                assert(localMTSPort);
+
+                localMTSPort->connectTo(remoteLettersPort);
+                _local_service_directory.connectTo(remoteServiceDiscoveriesPort);
+
+                fipa::services::ServiceDirectoryEntry mts(serviceName, "mts", serviceName , this->getModelName());
+                mGlobalServiceDirectory->registerService(mts);
+
+                RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : registered service '" << serviceName << "'" << RTT::endlog();
+
+                trigger();
+            }
+
+        } catch(...)
+        {
+            RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : failed to register service '" << serviceName << "'" << RTT::endlog();
+        }
+    }
+}
+
+void MessageTransportTask::serviceRemoved(servicediscovery::avahi::ServiceEvent se)
+{
+    std::string serviceName = se.getServiceConfiguration().getName();
+    std::string serviceTaskModel = se.getServiceConfiguration().getDescription("TASK_MODEL");
+    if(serviceTaskModel == this->getModelName())
+    {
+        if(serviceName != getName())
+        {
+            removeReceiver(serviceName);
+        }
+    }
 }
 
 } // namespace fipa_services

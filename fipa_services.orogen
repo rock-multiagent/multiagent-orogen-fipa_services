@@ -14,6 +14,7 @@ version '0.5'
 
 using_library "fipa_acl"
 using_library "fipa_services"
+using_library "service_discovery"
 
 import_types_from "fipa_acl/message_generator/serialized_letter.h"
 import_types_from "fipa_services/ServiceDirectoryEntry.hpp"
@@ -23,26 +24,18 @@ import_types_from "base"
 # (Message Transport Services) - mainly to allow
 # for inter-robot communication.
 # 
-# One MTS per robot/environment is responsible for delivering message 
-# to a set of components, here identified by an environment id as part
-# which is part of the components name: <env-id>_<type>. 
-#
-# An MTS will be recognized by its type suffix: <env-id>_MTA, where
-# the <env-id> follows <robot-type>_<id> (thus the second underscore 
-# separates <env-id> and <type>, e.g. crex_0_MTA)
-#
 # An MTS allows to register 
 # receivers and will write the information to the receivers 
 # according to the receivers named in the FIPA message
 #
-# Warning: root modules and derived components should *NOT* be started with
-# the '--sd-domain' option. Instead the property 'avahi_type' should be used, 
-# to set domain and type (_udp,_tcp).
-# Otherwise a runtime condition exists between receiving events from the 
-# underlying service_discovery and registering callbacks for these events. 
-# !! -- this requires to be fixed in upcoming versions -- !!
+# Warning: components should be started with
+# the '--sd-domain' option to allow for autoconnection behavior
+#
 task_context "MessageTransportTask" do
     needs_configuration
+
+    property("autoconnect","/bool", false).
+        doc("Control flag for the autoconnection behaviour of this module")
 
     input_port("letters", "/fipa/SerializedLetter").
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
