@@ -34,23 +34,9 @@ import_types_from "base"
 task_context "MessageTransportTask" do
     needs_configuration
 
-    property("autoconnect","/bool", false).
-        doc("Control flag for the autoconnection behaviour of this module")
-
     input_port("letters", "/fipa/SerializedLetter").
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
         needs_reliable_connection
-
-    input_port("service_directories", "/fipa/services/ServiceDirectoryList").
-        doc("Input port to retrieve service directories of other MessageTransports")
-
-    output_port("global_service_directory", "/fipa/services/ServiceDirectoryList").
-        keep_last_written_value(true).
-        doc("Output port of the services this MessageTransport is directly attached to")
-
-    output_port("local_service_directory", "/fipa/services/ServiceDirectoryList").
-        keep_last_written_value(true).
-        doc("Output port of the services this MessageTransport is directly attached to")
 
     dynamic_input_port(/\w+\-\>\w+/, "/fipa/SerializedLetter").
         doc("Direct input port for the MTA (Message transport service)")
@@ -82,6 +68,7 @@ end
 deployment "fipa_services_test" do
     do_not_install
     (0..4).each do |i|
-        task("mts_#{i}", "fipa_services::MessageTransportTask")
+        task("mts_#{i}", "fipa_services::MessageTransportTask").
+        periodic(0.01)
     end
 end

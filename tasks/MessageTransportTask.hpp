@@ -12,11 +12,17 @@
 
 namespace fipa {
 namespace services {
-    class ServiceDirectory;
+    class DistributedServiceDirectory;
 
-namespace message_transport {
-    class MessageTransport;
-} // namespace message_transport
+    namespace udt {
+        class Node;
+        class OutgoingConnection;
+    }
+
+    namespace message_transport {
+        class MessageTransport;
+    } // namespace message_transport
+
 } // namespace service
 } // namespace fipa
 
@@ -27,27 +33,27 @@ namespace fipa_services {
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
      * In order to modify the interfaces you should (re)use oroGen and rely on the associated workflow.
      * The FIPA message bus relies on the application of so called MTS's
-(Message Transport Services) - mainly to allow
-for inter-robot communication.
-
-One MTS per robot/environment is responsible for delivering message
-to a set of components, here identified by an environment id as part
-which is part of the components name: <env-id>_<type>.
-
-An MTS will be recognized by its type suffix: <env-id>_MTA, where
-the <env-id> follows <robot-type>_<id> (thus the second underscore
-separates <env-id> and <type>, e.g. crex_0_MTA)
-
-An MTS allows to register
-receivers and will write the information to the receivers
-according to the receivers named in the FIPA message
-
-Warning: root modules and derived components should *NOT* be started with
-the '--sd-domain' option. Instead the property 'avahi_type' should be used,
-to set domain and type (_udp,_tcp).
-Otherwise a runtime condition exists between receiving events from the
-underlying service_discovery and registering callbacks for these events.
-!! -- this requires to be fixed in upcoming versions -- !!
+     *  (Message Transport Services) - mainly to allow
+     *  for inter-robot communication.
+     *  
+     *  One MTS per robot/environment is responsible for delivering message
+     *  to a set of components, here identified by an environment id as part
+     *  which is part of the components name: <env-id>_<type>.
+     *  
+     *  An MTS will be recognized by its type suffix: <env-id>_MTA, where
+     *  the <env-id> follows <robot-type>_<id> (thus the second underscore
+     *  separates <env-id> and <type>, e.g. crex_0_MTA)
+     *  
+     *  An MTS allows to register
+     *  receivers and will write the information to the receivers
+     *  according to the receivers named in the FIPA message
+     *  
+     *  Warning: root modules and derived components should *NOT* be started with
+     *  the '--sd-domain' option. Instead the property 'avahi_type' should be used,
+     *  to set domain and type (_udp,_tcp).
+     *  Otherwise a runtime condition exists between receiving events from the
+     *  underlying service_discovery and registering callbacks for these events.
+     *  !! -- this requires to be fixed in upcoming versions -- !!
      * \details
      * The name of a TaskContext is primarily defined via:
      \verbatim
@@ -65,10 +71,14 @@ underlying service_discovery and registering callbacks for these events.
         mutable boost::shared_mutex mServiceChangeMutex; /// Prevents a simulatenous change of the service
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
-        fipa::services::ServiceDirectory* mGlobalServiceDirectory;
-        fipa::services::ServiceDirectory* mLocalServiceDirectory;
 
-        base::Time mLocalServiceDirectoryTimestamp;
+        // Identify available services using the distributed service directory
+        fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
+        fipa::services::ServiceLocation* mServiceLocation;
+
+        // Handling of loose coupling of MTS by using UDT communication
+        fipa::services::udt::Node* mUDTNode;
+        std::map<std::string, fipa::services::udt::OutgoingConnection*> mMTSConnections;
 
         // Receiver ports for receivers that have been attached via the given operation
         typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;
