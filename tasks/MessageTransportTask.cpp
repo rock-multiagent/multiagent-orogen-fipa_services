@@ -218,7 +218,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                     mtsConnection = cit->second;
                     if(mtsConnection->getAddress() != address)
                     {
-                        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : cached connection requires an update -- deleting existing entry" << RTT::endlog(); 
+                        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog(); 
 
                         delete cit->second;
                         mMTSConnections.erase(receiverName);
@@ -241,7 +241,13 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                 }
 
                 RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : sending letter to '" << receiverName << "'" << RTT::endlog();
-                mtsConnection->sendLetter(updatedLetter);
+                try {
+                    mtsConnection->sendLetter(updatedLetter);
+                } catch(const std::runtime_error& e)
+                {
+                    RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : could not send letter '" << receiverName << "' -- " << e.what() << RTT::endlog();
+                    return false;
+                }
             } // end handling
         }
     }
