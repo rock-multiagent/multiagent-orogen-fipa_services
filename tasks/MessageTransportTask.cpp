@@ -117,7 +117,7 @@ void MessageTransportTask::updateHook()
     mUDTNode->update();
     while(mUDTNode->hasLetter())
     {
-        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : node received letter " << RTT::endlog();
+        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : node received letter " << RTT::endlog();
         fipa::acl::Letter letter = mUDTNode->nextLetter();
         mMessageTransport->handle(letter);
     }
