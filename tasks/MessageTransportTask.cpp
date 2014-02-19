@@ -14,6 +14,8 @@
 #include <rtt/transports/corba/TaskContextServer.hpp>
 #include <rtt/transports/corba/TaskContextProxy.hpp>
 
+#include <uuid/uuid.h>
+
 namespace rc = RTT::corba;
 
 using namespace RTT;
@@ -53,7 +55,14 @@ bool MessageTransportTask::configureHook()
     mDistributedServiceDirectory = new fipa::services::DistributedServiceDirectory();
 
     // Create internal message transport service
-    fipa::acl::AgentID agentName(this->getName());
+
+    // Make sure the MTS name is unique for each running instance
+    uuid_t uuid;
+    uuid_generate(uuid);
+    char mtsUID[512];
+    uuid_unparse(uuid, mtsUID);
+
+    fipa::acl::AgentID agentName(this->getName() + "-" + std::string(mtsUID));
     mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName);
     // register the default transport
     mMessageTransport->registerTransport("default-corba-transport", boost::bind(&MessageTransportTask::deliverOrForwardLetter,this,_1));

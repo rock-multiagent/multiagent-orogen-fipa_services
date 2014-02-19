@@ -7,6 +7,7 @@
   <url>https://gitorious.org/rock-multiagent</url>
   <depend package="base/types" />
   <depend package="multiagent/fipa_services" />
+  <depend package="uuid" />
   <versioncontrol type="git" url="" />
   <export>
     <cpp cflags="" lflags="" />

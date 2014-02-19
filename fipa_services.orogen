@@ -12,6 +12,7 @@ version '0.4'
 # Moving to fipa_services
 version '0.5'
 
+using_library "uuid"
 using_library "fipa_acl"
 using_library "fipa_services"
 using_library "service_discovery"
