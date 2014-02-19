@@ -88,7 +88,6 @@ void MessageTransportTask::errorHook()
 
 bool MessageTransportTask::startHook()
 {
-    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : startHook" << RTT::endlog();
     if(!MessageTransportTaskBase::startHook())
         return false;
 
@@ -218,7 +217,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                     mtsConnection = cit->second;
                     if(mtsConnection->getAddress() != address)
                     {
-                        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog(); 
+                        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog(); 
 
                         delete cit->second;
                         mMTSConnections.erase(receiverName);
@@ -235,17 +234,17 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                         mMTSConnections[receiverName] = mtsConnection;
                     } catch(const std::runtime_error& e)
                     {
-                        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what() << RTT::endlog();
+                        RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what() << RTT::endlog();
                         return false;
                     }
                 }
 
-                RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : sending letter to '" << receiverName << "'" << RTT::endlog();
+                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : sending letter to '" << receiverName << "'" << RTT::endlog();
                 try {
                     mtsConnection->sendLetter(updatedLetter);
                 } catch(const std::runtime_error& e)
                 {
-                    RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : could not send letter '" << receiverName << "' -- " << e.what() << RTT::endlog();
+                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not send letter '" << receiverName << "' -- " << e.what() << RTT::endlog();
                     return false;
                 }
             } // end handling
