@@ -60,12 +60,13 @@ bool MessageTransportTask::configureHook()
 
     mUDTNode = new fipa::services::udt::Node();
     mUDTNode->listen();
+    mInterface = _nic.get();
 
     // This MTA's service location and thus for all of its clients
     //
     // When required the service address will be used to connect to this service, which has to
     // handle all connection requests and incoming messages
-    mServiceLocation = new fipa::services::ServiceLocation(mUDTNode->getAddress().toString(), this->getModelName());
+    mServiceLocation = new fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), this->getModelName());
 
     return true;
 }
