@@ -61,12 +61,14 @@ task_context "MessageTransportTask" do
     operation("getReceivers").
         returns("/std/vector</std/string >").
         doc("Retrieve list of currently attached receivers")
+
+    # For now the component needs to be periodic to handle the internal udt based communication
+    periodic(0.01)
 end
 
 deployment "fipa_services_test" do
     do_not_install
     (0..4).each do |i|
-        task("mts_#{i}", "fipa_services::MessageTransportTask").
-        periodic(0.01)
+        task("mts_#{i}", "fipa_services::MessageTransportTask")
     end
 end
