@@ -250,7 +250,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                     mtsConnection->sendLetter(updatedLetter);
                 } catch(const std::runtime_error& e)
                 {
-                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not send letter '" << receiverName << "' -- " << e.what() << RTT::endlog();
+                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what() << RTT::endlog();
                     return false;
                 }
             } // end handling
