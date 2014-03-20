@@ -194,9 +194,15 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                     if(clientPort)
                     {
                         fipa::SerializedLetter serializedLetter(updatedLetter, fipa::acl::representation::BITEFFICIENT);
-                        clientPort->write(serializedLetter);
-                        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivery to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
-                        continue;
+                        if(!clientPort->connected())
+                        {
+                            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
+                            return false;
+                        } else {
+                            clientPort->write(serializedLetter);
+                            RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivery to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
+                            continue;
+                        }
                     } else {
                         RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
                         return false;
