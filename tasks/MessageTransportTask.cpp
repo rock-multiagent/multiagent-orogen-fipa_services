@@ -25,7 +25,7 @@ namespace fipa_services
 ////////////////////////////////////////////////////////////////////
 //                           PUBLIC                               //
 ////////////////////////////////////////////////////////////////////
-MessageTransportTask::MessageTransportTask(std::string const& name) 
+MessageTransportTask::MessageTransportTask(std::string const& name)
     : MessageTransportTaskBase(name)
     , mMessageTransport(0)
     , mDistributedServiceDirectory(0)
@@ -127,15 +127,18 @@ void MessageTransportTask::stopHook()
     MessageTransportTaskBase::stopHook();
 }
 
-bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& letter)
+fipa::acl::AgentIDList MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& letter)
 {
     using namespace fipa::acl;
+
 
     ACLBaseEnvelope envelope = letter.flattened();
     AgentIDList receivers = envelope.getIntendedReceivers();
     AgentIDList::const_iterator rit = receivers.begin();
 
-    // For each intended receiver, try to deliver. 
+    AgentIDList remainingReceivers = receivers;
+
+    // For each intended receiver, try to deliver.
     // If it is a local client, deliver locally, otherwise forward to the known locator, which is an MTS in this context
     for(; rit != receivers.end(); ++rit)
     {
@@ -161,8 +164,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                 delete cit->second;
                 mMTSConnections.erase(receiverName);
             }
-
-            return false;
+            continue;
         } else if(list.size() > 1) {
             RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate'" << RTT::endlog();
         } else {
@@ -175,7 +177,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
             if( location.getSignatureType() != this->getModelName())
             {
                 RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : service signature for '" << receiverName << "' is '" << location.getSignatureType() << "' but expected '" << this->getModelName() << "' -- will not connect: " << serviceEntry.toString() << RTT::endlog();
-                return false;
+                continue;
             }
 
             // Local delivery
@@ -188,7 +190,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                 if(portsIt == mReceivers.end())
                 {
                     RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
-                    return false;
+                    continue;
                 } else {
                     RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(portsIt->second);
                     if(clientPort)
@@ -197,15 +199,22 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                         if(!clientPort->connected())
                         {
                             RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
-                            return false;
+                            continue;
                         } else {
                             clientPort->write(serializedLetter);
+
+                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
+                            if(it != remainingReceivers.end())
+                            {
+                                remainingReceivers.erase(it);
+                            }
+
                             RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivery to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
                             continue;
                         }
                     } else {
                         RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
-                        return false;
+                        continue;
                     }
                 }
             } else {
@@ -223,7 +232,7 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                     mtsConnection = cit->second;
                     if(mtsConnection->getAddress() != address)
                     {
-                        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog(); 
+                        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog();
 
                         delete cit->second;
                         mMTSConnections.erase(receiverName);
@@ -241,23 +250,29 @@ bool MessageTransportTask::deliverOrForwardLetter(const fipa::acl::Letter& lette
                     } catch(const std::runtime_error& e)
                     {
                         RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what() << RTT::endlog();
-                        return false;
+                        continue;
                     }
                 }
 
                 RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : sending letter to '" << receiverName << "'" << RTT::endlog();
                 try {
                     mtsConnection->sendLetter(updatedLetter);
+
+                    fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
+                    if(it != remainingReceivers.end())
+                    {
+                        remainingReceivers.erase(it);
+                    }
                 } catch(const std::runtime_error& e)
                 {
                     RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what() << RTT::endlog();
-                    return false;
+                    continue;
                 }
             } // end handling
         }
     }
 
-    return true;
+    return remainingReceivers;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -300,23 +315,23 @@ bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_l
 
     RTT::base::PortInterface *pi = ports()->getPort(receiver);
     if(pi) // we are already having a connection of the given name
-    {   
+    {
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : connection " << receiver << " is already registered" << RTT::endlog();
-        // Since the connection already exists, everything is good?! 
+        // Since the connection already exists, everything is good?!
         // so could be true here as well
         return false;
-    }   
+    }
 
     RTT::base::PortInterface* port = _letters.antiClone();
     port->setName(receiver);
-    
+
     RTT::base::OutputPortInterface *out_port = dynamic_cast<RTT::base::OutputPortInterface*>(port);
     if(!out_port)
     {
         RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : could not cast anticlone to outputport" << RTT::endlog();
         return false;
     }
-        
+
     bool success = addReceiverPort(out_port, receiver);
     if(success && is_local)
     {

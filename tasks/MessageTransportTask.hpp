@@ -116,8 +116,9 @@ namespace fipa_services {
          * Without being overwritten, the module will send the message back to
          * the sender.
          * \param message message content (e.g. bitefficient encoded fipa message)
+         * \return list of agents for which the delivery failed
          */
-        bool deliverOrForwardLetter(const fipa::acl::Letter& letter);
+        fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
 
         /**
          * Service added callback handler

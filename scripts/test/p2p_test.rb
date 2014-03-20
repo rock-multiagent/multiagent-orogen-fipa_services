@@ -89,7 +89,7 @@ Orocos.run "fipa_services_test", :wait => 20, :valgrind => false do
     require 'fipa-message'
     msg = FIPA::ACLMessage.new
     msg.setContent("test-content")
-    msg.addReceiver(FIPA::AgentId.new("agent_1"))
+    msg.addReceiver(FIPA::AgentId.new("agent_3"))
     msg.addReceiver(FIPA::AgentId.new("agent_2"))
     msg.setSender(FIPA::AgentId.new("agent_0"))
     msg.setConversationID("bla-one")
