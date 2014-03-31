@@ -136,6 +136,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverOrForwardLetter(const fipa::
     AgentIDList receivers = envelope.getIntendedReceivers();
     AgentIDList::const_iterator rit = receivers.begin();
 
+    // Maintain a list of remaining receivers
     AgentIDList remainingReceivers = receivers;
 
     // For each intended receiver, try to deliver.
@@ -174,99 +175,46 @@ fipa::acl::AgentIDList MessageTransportTask::deliverOrForwardLetter(const fipa::
             ServiceLocator locator = serviceEntry.getLocator();
             ServiceLocation location = locator.getFirstLocation();
 
+            // Check whether this MTS is dealing also with an MTS
             if( location.getSignatureType() != this->getModelName())
             {
                 RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : service signature for '" << receiverName << "' is '" << location.getSignatureType() << "' but expected '" << this->getModelName() << "' -- will not connect: " << serviceEntry.toString() << RTT::endlog();
                 continue;
             }
 
-            // Local delivery
+            // Perform local delivery if the service location of this MTS is the same as the one
+            // the receiver's MTS
             if(location == *mServiceLocation)
             {
-                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' delivery to local client" << RTT::endlog();
-
-                // Deliver the message to local client, i.e. the corresponding receiver has a dedicated output port available on this MTS
-                ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
-                if(portsIt == mReceivers.end())
+                if( deliverToLocalReceiver(updatedLetter, receiverName, intendedReceiverName ) )
                 {
-                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
-                    continue;
-                } else {
-                    RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(portsIt->second);
-                    if(clientPort)
-                    {
-                        fipa::SerializedLetter serializedLetter(updatedLetter, fipa::acl::representation::BITEFFICIENT);
-                        if(!clientPort->connected())
-                        {
-                            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
-                            continue;
-                        } else {
-                            clientPort->write(serializedLetter);
-
-                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
-                            if(it != remainingReceivers.end())
-                            {
-                                remainingReceivers.erase(it);
-                            }
-
-                            RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivery to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
-                            continue;
-                        }
-                    } else {
-                        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
-                        continue;
-                    }
-                }
-            } else {
-                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' forwarding to other MTS" << RTT::endlog();
-
-                // Sending message to another MTS
-                std::map<std::string, fipa::services::udt::OutgoingConnection*>::const_iterator cit = mMTSConnections.find(receiverName);
-                udt::Address address = udt::Address::fromString(location.getServiceAddress());
-
-                bool connectionExists = false;
-                // Validate connection by comparing address in cache and current address in service directory
-                udt::OutgoingConnection* mtsConnection = 0;
-                if(cit != mMTSConnections.end())
-                {
-                    mtsConnection = cit->second;
-                    if(mtsConnection->getAddress() != address)
-                    {
-                        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog();
-
-                        delete cit->second;
-                        mMTSConnections.erase(receiverName);
-                    } else {
-                        connectionExists = true;
-                    }
-                }
-
-                // Cache newly created connection
-                if(!connectionExists)
-                {
-                    try {
-                        mtsConnection = new udt::OutgoingConnection(address);
-                        mMTSConnections[receiverName] = mtsConnection;
-                    } catch(const std::runtime_error& e)
-                    {
-                        RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what() << RTT::endlog();
-                        continue;
-                    }
-                }
-
-                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : sending letter to '" << receiverName << "'" << RTT::endlog();
-                try {
-                    mtsConnection->sendLetter(updatedLetter);
-
+                    // upon success remove from remaining receivers
                     fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
                     if(it != remainingReceivers.end())
                     {
                         remainingReceivers.erase(it);
                     }
-                } catch(const std::runtime_error& e)
+                }
+            } else {
+                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' forwarding to other MTS" << RTT::endlog();
+
+                // Send to the remote (MTS) and allow for retrying
+                // to send the message at least once -- allowing for connection reset
+                size_t numberOfTries = 2;
+                for(size_t i = 0; i < numberOfTries; ++i)
                 {
-                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what() << RTT::endlog();
-                    continue;
+                    if( deliverToRemoteReceiver(updatedLetter, location, receiverName, intendedReceiverName) )
+                    {
+                        // upon success remove from remaining receivers
+                        fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
+                        if(it != remainingReceivers.end())
+                        {
+                            remainingReceivers.erase(it);
+                        }
+                        break;
+                    }
+
+                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : failed to deliver a message to '" << receiverName << "' in try #" << numberOfTries << " " << RTT::endlog();
                 }
             } // end handling
         }
@@ -417,6 +365,92 @@ void MessageTransportTask::serviceRemoved(servicediscovery::avahi::ServiceEvent 
         {
             removeReceiver(serviceName);
         }
+    }
+}
+
+bool MessageTransportTask::deliverToLocalReceiver(const fipa::acl::Letter& letter, const std::string& receiverName, const std::string& intendedReceiverName)
+{
+    RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' delivery to local client" << RTT::endlog();
+
+    // Deliver the message to local client, i.e. the corresponding receiver has a dedicated output port available on this MTS
+    ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
+    if(portsIt == mReceivers.end())
+    {
+        RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
+    } else {
+        RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(portsIt->second);
+        if(clientPort)
+        {
+            fipa::SerializedLetter serializedLetter(letter, fipa::acl::representation::BITEFFICIENT);
+            if(!clientPort->connected())
+            {
+                RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
+            } else {
+                clientPort->write(serializedLetter);
+                RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivered to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
+                return true;
+            }
+        } else {
+            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
+        }
+    }
+
+    return false;
+}
+
+
+bool MessageTransportTask::deliverToRemoteReceiver(const fipa::acl::Letter& letter, const fipa::services::ServiceLocation& location, const std::string& receiverName, const std::string& intendedReceiverName)
+{
+    RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' forwarding to other MTS" << RTT::endlog();
+
+    using namespace fipa::services;
+    // Sending message to another MTS
+    std::map<std::string, fipa::services::udt::OutgoingConnection*>::const_iterator cit = mMTSConnections.find(receiverName);
+    udt::Address address = udt::Address::fromString(location.getServiceAddress());
+
+    bool connectionExists = false;
+    // Validate connection by comparing address in cache and current address in service directory
+    udt::OutgoingConnection* mtsConnection = 0;
+    if(cit != mMTSConnections.end())
+    {
+        mtsConnection = cit->second;
+        if(mtsConnection->getAddress() != address)
+        {
+            RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : cached connection requires an update " << mtsConnection->getAddress().toString() << " vs. " << address.toString() << " -- deleting existing entry" << RTT::endlog();
+
+            delete cit->second;
+            mMTSConnections.erase(receiverName);
+        } else {
+            connectionExists = true;
+        }
+    }
+
+    // Cache newly created connection
+    if(!connectionExists)
+    {
+        try {
+            mtsConnection = new udt::OutgoingConnection(address);
+            mMTSConnections[receiverName] = mtsConnection;
+        } catch(const std::runtime_error& e)
+        {
+            RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not establish connection to '" << location.toString() << "' -- " << e.what() << RTT::endlog();
+            return false;
+        }
+    }
+
+    RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : sending letter to '" << receiverName << "'" << RTT::endlog();
+    try {
+        mtsConnection->sendLetter(letter);
+        RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivered to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
+        return true;
+    } catch(const std::runtime_error& e)
+    {
+        // If sending fails, enforce reconnecting the next time
+        delete mtsConnection;
+        mMTSConnections.erase(receiverName);
+
+        RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could not send letter to '" << receiverName << "' -- " << e.what() << RTT::endlog();
+        return false;
     }
 }
 

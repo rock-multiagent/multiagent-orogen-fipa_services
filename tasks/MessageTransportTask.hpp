@@ -121,6 +121,28 @@ namespace fipa_services {
         fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
 
         /**
+         * Deliver the letter to a local receiver
+         * \param letter The letter to be sent
+         * \param receiverName Name of the next (local) receiver -- an output port of this name has to exist
+         * on this task connext
+         * \param intendedReceiverName Name of the final receiver
+         * \return true upon success, false otherwise
+         */
+        bool deliverToLocalReceiver(const fipa::acl::Letter& letter, const std::string& receiverName, const std::string& intendedReceiverName);
+
+        /**
+         * Deliver to a remote receiver, i.e. another MTS
+         * If sending fails the connection will be removed from the known connection to enforce
+         * a refresh of the connection
+         * \param letter The letter to be sent
+         * \param location Location information containing the transport address
+         * \param receiverName Name of the next recipient
+         * \param intendedReceiverName Name of the final recipient
+         * \return true upon success, false otherwise
+         */
+        bool deliverToRemoteReceiver(const fipa::acl::Letter& letter, const fipa::services::ServiceLocation& location, const std::string& receiverName, const std::string& intendedReceiverName);
+
+        /**
          * Service added callback handler
          */
         void serviceAdded(servicediscovery::avahi::ServiceEvent event);
