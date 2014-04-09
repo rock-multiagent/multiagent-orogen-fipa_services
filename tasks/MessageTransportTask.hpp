@@ -88,6 +88,10 @@ namespace fipa_services {
         /* Upon adding of a receiver, a new output port for this receiver is generated. Output port will be of receivers name (if successful)
          */
         virtual bool addReceiver(::std::string const & receiver, bool is_local = false);
+        
+        /* Adds a socket transport that forwards messages to the given ip and port via sockets.
+         */
+        virtual void addSocketTransport();
 
         /* Retrieve list of currently attached receivers
          */

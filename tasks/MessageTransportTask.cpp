@@ -420,5 +420,9 @@ void MessageTransportTask::serviceRemoved(servicediscovery::avahi::ServiceEvent 
     }
 }
 
-} // namespace fipa_services
+void MessageTransportTask::addSocketTransport()
+{
+    // TODO
+}
 
+} // namespace fipa_services
