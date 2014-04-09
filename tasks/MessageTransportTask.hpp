@@ -21,6 +21,7 @@ namespace services {
 
     namespace message_transport {
         class MessageTransport;
+        class SocketTransport;
     } // namespace message_transport
 
 } // namespace service
@@ -71,6 +72,9 @@ namespace fipa_services {
         mutable boost::shared_mutex mServiceChangeMutex; /// Prevents a simulatenous change of the service
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
+        
+        // Optional Socket Transport
+        fipa::services::message_transport::SocketTransport* mSocketTransport;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;

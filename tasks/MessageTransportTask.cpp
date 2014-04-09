@@ -8,6 +8,7 @@
 #include <boost/thread.hpp>
 
 #include <fipa_services/MessageTransport.hpp>
+#include <fipa_services/SocketTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_services/transports/udt/UDTTransport.hpp>
 
@@ -294,6 +295,9 @@ void MessageTransportTask::cleanupHook()
 
     delete mMessageTransport;
     mMessageTransport = NULL;
+    
+    delete mSocketTransport;
+    mSocketTransport = NULL;
 }
 
 
@@ -422,7 +426,11 @@ void MessageTransportTask::serviceRemoved(servicediscovery::avahi::ServiceEvent 
 
 void MessageTransportTask::addSocketTransport()
 {
-    // TODO
+    // create socket transport TODO params
+    mSocketTransport = new fipa::services::message_transport::SocketTransport();
+    // register socket transport
+    mMessageTransport->registerTransport("socket-transport", 
+                                         boost::bind(&fipa::services::message_transport::SocketTransport::deliverForwardLetter, mSocketTransport, _1));
 }
 
 } // namespace fipa_services
