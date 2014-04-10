@@ -427,7 +427,7 @@ void MessageTransportTask::serviceRemoved(servicediscovery::avahi::ServiceEvent 
 void MessageTransportTask::addSocketTransport()
 {
     // create socket transport TODO params
-    mSocketTransport = new fipa::services::message_transport::SocketTransport();
+    mSocketTransport = new fipa::services::message_transport::SocketTransport(mMessageTransport);
     // register socket transport
     mMessageTransport->registerTransport("socket-transport", 
                                          boost::bind(&fipa::services::message_transport::SocketTransport::deliverForwardLetter, mSocketTransport, _1));
