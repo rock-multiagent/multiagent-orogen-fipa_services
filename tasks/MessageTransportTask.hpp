@@ -75,6 +75,8 @@ namespace fipa_services {
         
         // Optional Socket Transport
         fipa::services::message_transport::SocketTransport* mSocketTransport;
+        // and its service location
+        fipa::services::ServiceLocation* mSocketServiceLocation;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;

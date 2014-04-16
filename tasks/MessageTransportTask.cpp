@@ -67,6 +67,12 @@ bool MessageTransportTask::configureHook()
     mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName);
     // register the default transport
     mMessageTransport->registerTransport("default-corba-transport", boost::bind(&MessageTransportTask::deliverOrForwardLetter,this,_1));
+    
+    // TODO it should be configurable, which transports to use
+    mSocketTransport = new fipa::services::message_transport::SocketTransport(mMessageTransport, mDistributedServiceDirectory);
+    // register socket transport
+    mMessageTransport->registerTransport("socket-transport", 
+                                         boost::bind(&fipa::services::message_transport::SocketTransport::deliverForwardLetter, mSocketTransport, _1));
 
     mUDTNode = new fipa::services::udt::Node();
     mUDTNode->listen();
@@ -77,6 +83,11 @@ bool MessageTransportTask::configureHook()
     // When required the service address will be used to connect to this service, which has to
     // handle all connection requests and incoming messages
     mServiceLocation = new fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), this->getModelName());
+    
+    // TODO get eth0 IP should be put in another class - it is not UDT specific
+    std::stringstream ss;
+    ss << "tcp://" << mUDTNode->getAddress(mInterface).ip << ":" << mSocketTransport->getPort();
+    mSocketServiceLocation = new fipa::services::ServiceLocation(ss.str(), "fipa::services::message_transport::SocketTransport");
 
     return true;
 }
@@ -289,6 +300,9 @@ void MessageTransportTask::cleanupHook()
 
     delete mServiceLocation;
     mServiceLocation = NULL;
+    
+    delete mSocketServiceLocation;
+    mSocketServiceLocation = NULL;
 
     delete mDistributedServiceDirectory;
     mDistributedServiceDirectory = NULL;
@@ -296,6 +310,7 @@ void MessageTransportTask::cleanupHook()
     delete mMessageTransport;
     mMessageTransport = NULL;
     
+    // TODO valgrind doesn't approve
     delete mSocketTransport;
     mSocketTransport = NULL;
 }
@@ -341,6 +356,8 @@ bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_l
     {
         fipa::services::ServiceLocator locator;
         locator.addLocation(*mServiceLocation);
+        // FIXME
+        locator.addLocation(*mSocketServiceLocation);
 
         fipa::services::ServiceDirectoryEntry client(receiver, "mts_client", locator, "Message client of " + getName());
         mDistributedServiceDirectory->registerService(client);
@@ -426,11 +443,7 @@ void MessageTransportTask::serviceRemoved(servicediscovery::avahi::ServiceEvent 
 
 void MessageTransportTask::addSocketTransport()
 {
-    // create socket transport TODO params
-    mSocketTransport = new fipa::services::message_transport::SocketTransport(mMessageTransport);
-    // register socket transport
-    mMessageTransport->registerTransport("socket-transport", 
-                                         boost::bind(&fipa::services::message_transport::SocketTransport::deliverForwardLetter, mSocketTransport, _1));
+    // TODO remove
 }
 
 } // namespace fipa_services
