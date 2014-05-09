@@ -84,10 +84,7 @@ bool MessageTransportTask::configureHook()
     // handle all connection requests and incoming messages
     mServiceLocation = new fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), this->getModelName());
     
-    // TODO get eth0 IP should be put in another class - it is not UDT specific
-    std::stringstream ss;
-    ss << "tcp://" << mUDTNode->getAddress(mInterface).ip << ":" << mSocketTransport->getPort();
-    mSocketServiceLocation = new fipa::services::ServiceLocation(ss.str(), "fipa::services::message_transport::SocketTransport");
+    mSocketServiceLocation = new fipa::services::ServiceLocation(mSocketTransport->getAddress(), "fipa::services::message_transport::SocketTransport");
 
     return true;
 }
