@@ -8,8 +8,9 @@
 #include <boost/thread.hpp>
 
 #include <fipa_services/MessageTransport.hpp>
-#include <fipa_services/SocketTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
+#include <fipa_services/transports/Transport.hpp>
+#include <fipa_services/transports/tcp/SocketTransport.hpp>
 #include <fipa_services/transports/udt/UDTTransport.hpp>
 
 #include <rtt/transports/corba/TaskContextServer.hpp>
@@ -84,7 +85,7 @@ bool MessageTransportTask::configureHook()
     // handle all connection requests and incoming messages
     mServiceLocation = new fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), this->getModelName());
     
-    mSocketServiceLocation = new fipa::services::ServiceLocation(mSocketTransport->getAddress(), "fipa::services::message_transport::SocketTransport");
+    mSocketServiceLocation = new fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::message_transport::SocketTransport");
 
     return true;
 }
@@ -231,7 +232,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverOrForwardLetter(const fipa::
 
                 // Sending message to another MTS
                 std::map<std::string, fipa::services::udt::OutgoingConnection*>::const_iterator cit = mMTSConnections.find(receiverName);
-                udt::Address address = udt::Address::fromString(location.getServiceAddress());
+                Address address = Address::fromString(location.getServiceAddress());
 
                 bool connectionExists = false;
                 // Validate connection by comparing address in cache and current address in service directory
