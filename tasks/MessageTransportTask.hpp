@@ -13,7 +13,8 @@
 namespace fipa {
 namespace services {
     class DistributedServiceDirectory;
-
+    class Transport;
+    
     namespace udt {
         class Node;
         class OutgoingConnection;
@@ -73,18 +74,19 @@ namespace fipa_services {
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
         
-        // Optional Socket Transport
+        // UDT Transport
+        fipa::services::Transport* mUDTTransport;
+        // Socket Transport
         fipa::services::message_transport::SocketTransport* mSocketTransport;
         // and its service location
         fipa::services::ServiceLocation* mSocketServiceLocation;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
-        fipa::services::ServiceLocation* mServiceLocation;
+        // TODO remove mServiceLocation(s)
 
         // Handling of loose coupling of MTS by using UDT communication
         fipa::services::udt::Node* mUDTNode;
-        std::map<std::string, fipa::services::udt::OutgoingConnection*> mMTSConnections;
         std::string mInterface;
 
         // Receiver ports for receivers that have been attached via the given operation
@@ -119,16 +121,6 @@ namespace fipa_services {
          * \return true on success, false otherwise
          */
         bool removeReceiverPort(const std::string& name);
-
-        /**
-         * The message, which is read within the updateHook(), is passed here.
-         * This function can be overwritten to process the incoming data.
-         * Without being overwritten, the module will send the message back to
-         * the sender.
-         * \param message message content (e.g. bitefficient encoded fipa message)
-         * \return list of agents for which the delivery failed
-         */
-        fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
 
         /**
          * Service added callback handler
