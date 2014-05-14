@@ -19,11 +19,14 @@ namespace services {
         class Node;
         class OutgoingConnection;
     }
+    
+    namespace tcp {
+        class SocketTransport;
+    }
 
     namespace message_transport {
         class MessageTransport;
-        class SocketTransport;
-    } // namespace message_transport
+    }
 
 } // namespace service
 } // namespace fipa
@@ -77,13 +80,12 @@ namespace fipa_services {
         // UDT Transport
         fipa::services::Transport* mUDTTransport;
         // Socket Transport
-        fipa::services::message_transport::SocketTransport* mSocketTransport;
+        fipa::services::tcp::SocketTransport* mSocketTransport;
         // and its service location
         fipa::services::ServiceLocation* mSocketServiceLocation;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
-        // TODO remove mServiceLocation(s)
 
         // Handling of loose coupling of MTS by using UDT communication
         fipa::services::udt::Node* mUDTNode;
@@ -136,6 +138,11 @@ namespace fipa_services {
          * Connect to another MTS using a known ior
          */
         void connectToMTS(const std::string& serviceName, const std::string& ior);
+        
+        /*
+         * Local delivery to an output port
+         */
+        fipa::acl::AgentIDList deliverLetterLocally(const fipa::acl::Letter& letter);
 
     public:
         /** TaskContext constructor for MessageTransportTask
