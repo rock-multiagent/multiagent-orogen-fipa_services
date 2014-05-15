@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
+#include <boost/assign/list_of.hpp>
 
 #include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
@@ -65,29 +66,31 @@ bool MessageTransportTask::configureHook()
     fipa::acl::AgentID agentName(this->getName() + "-" + std::string(mtsUID));
     mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName);
     
+    
+    // TODO it should be configurable, which transports to use
     // Initalize UDT
     mUDTNode = new fipa::services::udt::Node();
     mUDTNode->listen();
     mInterface = _nic.get();
+    // Initialize TCP
+    mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport, mDistributedServiceDirectory);
     
-    // Register the local delivery
+    // Register the local delivery TODO check again
     mMessageTransport->registerTransport("local-delivery", 
                                          boost::bind(&fipa_services::MessageTransportTask::deliverLetterLocally, this,_1));
     
-    mUDTTransport = new fipa::services::Transport(getName(), mDistributedServiceDirectory,
-                                                  fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"));
-    // register the default transport (udt)
-    mMessageTransport->registerTransport("default-udt-transport", 
-                                         boost::bind(&fipa::services::Transport::deliverOrForwardLetterViaUDT, mUDTTransport,_1));
+    mDefaultTransport = new fipa::services::Transport(getName(), mDistributedServiceDirectory,
+                                                  boost::assign::map_list_of
+                                                  ("udt", fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"))
+                                                  ("tcp", fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport")));
+    // register the default transport
+    mMessageTransport->registerTransport("default-transport", 
+                                         boost::bind(&fipa::services::Transport::deliverOrForwardLetter, mDefaultTransport,_1));
     
-    // TODO it should be configurable, which transports to use
-    mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport, mDistributedServiceDirectory);
+    
     // register socket transport
-    mMessageTransport->registerTransport("socket-transport", 
-                                         boost::bind(&fipa::services::tcp::SocketTransport::deliverForwardLetter, mSocketTransport, _1));
-    
-    
-    mSocketServiceLocation = new fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport");
+    //mMessageTransport->registerTransport("socket-transport", 
+    //                                     boost::bind(&fipa::services::tcp::SocketTransport::deliverForwardLetter, mSocketTransport, _1));
 
     return true;
 }
@@ -149,9 +152,6 @@ void MessageTransportTask::cleanupHook()
 
     delete mUDTNode;
     mUDTNode = NULL;
-    
-    delete mSocketServiceLocation;
-    mSocketServiceLocation = NULL;
 
     delete mDistributedServiceDirectory;
     mDistributedServiceDirectory = NULL;
@@ -199,8 +199,8 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
             ServiceLocator locator = serviceEntry.getLocator();
             ServiceLocation location = locator.getFirstLocation();
             
-            // Check against the udt default service location
-            if(location == mUDTTransport->getServiceLocation())
+            // Check against the first service location (should be enough)
+            if(location == mDefaultTransport->getServiceLocations()[0])
             {
                 // Local delivery
                 RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' delivery to local client" << RTT::endlog();
@@ -237,6 +237,10 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
                         continue;
                     }
                 }
+            }
+            else
+            {
+                RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : not handling '" << receiverName << "' as it's not a local agent." << RTT::endlog();
             }
         }
     }
@@ -284,9 +288,13 @@ bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_l
     if(success && is_local)
     {
         fipa::services::ServiceLocator locator;
-        // TODO foreach transport in transports: get servicelocation
-        locator.addLocation(mUDTTransport->getServiceLocation());
-        locator.addLocation(*mSocketServiceLocation);
+        
+        std::vector<fipa::services::ServiceLocation> locations = mDefaultTransport->getServiceLocations();
+        for(std::vector<fipa::services::ServiceLocation>::const_iterator it = locations.begin();
+            it != locations.end(); it++)
+        {
+            locator.addLocation(*it);
+        }
 
         fipa::services::ServiceDirectoryEntry client(receiver, "mts_client", locator, "Message client of " + getName());
         mDistributedServiceDirectory->registerService(client);

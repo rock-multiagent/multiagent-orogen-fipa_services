@@ -77,12 +77,10 @@ namespace fipa_services {
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
         
-        // UDT Transport
-        fipa::services::Transport* mUDTTransport;
+        // Default Transport
+        fipa::services::Transport* mDefaultTransport;
         // Socket Transport
         fipa::services::tcp::SocketTransport* mSocketTransport;
-        // and its service location
-        fipa::services::ServiceLocation* mSocketServiceLocation;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
