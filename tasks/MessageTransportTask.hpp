@@ -79,8 +79,6 @@ namespace fipa_services {
         
         // Default Transport
         fipa::services::Transport* mDefaultTransport;
-        // Socket Transport
-        fipa::services::tcp::SocketTransport* mSocketTransport;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
