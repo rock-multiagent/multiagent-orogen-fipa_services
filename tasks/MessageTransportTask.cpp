@@ -75,7 +75,7 @@ bool MessageTransportTask::configureHook()
     // Initialize TCP
     fipa::services::tcp::SocketTransport::startListening(mMessageTransport);
     
-    // Register the local delivery TODO check again
+    // Register the local delivery
     mMessageTransport->registerTransport("local-delivery", 
                                          boost::bind(&fipa_services::MessageTransportTask::deliverLetterLocally, this,_1));
     
@@ -173,19 +173,17 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
         // Handle delivery
         // The name of the next destination, can be an intermediate receiver
         std::string receiverName = rit->getName();
-        // The intended receiver, i.e. name of the final destination
-        std::string intendedReceiverName = receiverName;
-        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(intendedReceiverName) );
+        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
 
         // Check for local receivers 
-        // TODO duplicate: done in each forwarding method
+        // XXX duplicate: done in each forwarding method
         fipa::services::ServiceDirectoryList list = mDistributedServiceDirectory->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, false);
         if(list.empty())
         {
-            RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown" << RTT::endlog();
+            RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown" << RTT::endlog();
             continue;
         } else if(list.size() > 1) {
-            RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate'" << RTT::endlog();
+            RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate'" << RTT::endlog();
         } else {
             using namespace fipa::services;
             // Extract the service location
@@ -203,7 +201,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
                 ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
                 if(portsIt == mReceivers.end())
                 {
-                    RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
+                    RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
                     continue;
                 } else {
                     RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(portsIt->second);
@@ -212,29 +210,29 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
                         fipa::SerializedLetter serializedLetter(updatedLetter, fipa::acl::representation::BITEFFICIENT);
                         if(!clientPort->connected())
                         {
-                            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
+                            RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
                             continue;
                         } else {
                             clientPort->write(serializedLetter);
-
-                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), receiverName);
+                            // Remove the receiver
+                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), *rit); 
                             if(it != remainingReceivers.end())
                             {
                                 remainingReceivers.erase(it);
                             }
 
-                            RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : delivery to '" << receiverName << "' (indendedReceiver is '" << intendedReceiverName << "')" << RTT::endlog();
+                            RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : delivery to '" << receiverName << "'" << RTT::endlog();
                             continue;
                         }
                     } else {
-                        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
+                        RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
                         continue;
                     }
                 }
             }
             else
             {
-                RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : not handling '" << receiverName << "' as it's not a local agent." << RTT::endlog();
+                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : not handling '" << receiverName << "' as it's not a local agent." << RTT::endlog();
             }
         }
     }
