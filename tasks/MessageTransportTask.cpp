@@ -154,7 +154,7 @@ void MessageTransportTask::cleanupHook()
     delete mMessageTransport;
     mMessageTransport = NULL;
     
-    // TODO SocketTransport::stopListening
+    fipa::services::tcp::SocketTransport::stopListening();
 }
 
 fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::acl::Letter& letter)
