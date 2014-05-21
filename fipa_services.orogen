@@ -61,7 +61,7 @@ task_context "MessageTransportTask" do
     operation("getReceivers").
         returns("/std/vector</std/string >").
         doc("Retrieve list of currently attached receivers")
-
+    
     # For now the component needs to be periodic to handle the internal udt based communication
     periodic(0.01)
 end

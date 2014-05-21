@@ -13,15 +13,20 @@
 namespace fipa {
 namespace services {
     class DistributedServiceDirectory;
-
+    class Transport;
+    
     namespace udt {
         class Node;
         class OutgoingConnection;
     }
+    
+    namespace tcp {
+        class SocketTransport;
+    }
 
     namespace message_transport {
         class MessageTransport;
-    } // namespace message_transport
+    }
 
 } // namespace service
 } // namespace fipa
@@ -71,14 +76,15 @@ namespace fipa_services {
         mutable boost::shared_mutex mServiceChangeMutex; /// Prevents a simulatenous change of the service
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
+        
+        // Default Transport
+        fipa::services::Transport* mDefaultTransport;
 
         // Identify available services using the distributed service directory
         fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
-        fipa::services::ServiceLocation* mServiceLocation;
 
         // Handling of loose coupling of MTS by using UDT communication
         fipa::services::udt::Node* mUDTNode;
-        std::map<std::string, fipa::services::udt::OutgoingConnection*> mMTSConnections;
         std::string mInterface;
 
         // Receiver ports for receivers that have been attached via the given operation
@@ -88,7 +94,7 @@ namespace fipa_services {
         /* Upon adding of a receiver, a new output port for this receiver is generated. Output port will be of receivers name (if successful)
          */
         virtual bool addReceiver(::std::string const & receiver, bool is_local = false);
-
+        
         /* Retrieve list of currently attached receivers
          */
         virtual ::std::vector< ::std::string > getReceivers();
@@ -111,38 +117,6 @@ namespace fipa_services {
         bool removeReceiverPort(const std::string& name);
 
         /**
-         * The message, which is read within the updateHook(), is passed here.
-         * This function can be overwritten to process the incoming data.
-         * Without being overwritten, the module will send the message back to
-         * the sender.
-         * \param message message content (e.g. bitefficient encoded fipa message)
-         * \return list of agents for which the delivery failed
-         */
-        fipa::acl::AgentIDList deliverOrForwardLetter(const fipa::acl::Letter& letter);
-
-        /**
-         * Deliver the letter to a local receiver
-         * \param letter The letter to be sent
-         * \param receiverName Name of the next (local) receiver -- an output port of this name has to exist
-         * on this task connext
-         * \param intendedReceiverName Name of the final receiver
-         * \return true upon success, false otherwise
-         */
-        bool deliverToLocalReceiver(const fipa::acl::Letter& letter, const std::string& receiverName, const std::string& intendedReceiverName);
-
-        /**
-         * Deliver to a remote receiver, i.e. another MTS
-         * If sending fails the connection will be removed from the known connection to enforce
-         * a refresh of the connection
-         * \param letter The letter to be sent
-         * \param location Location information containing the transport address
-         * \param receiverName Name of the next recipient
-         * \param intendedReceiverName Name of the final recipient
-         * \return true upon success, false otherwise
-         */
-        bool deliverToRemoteReceiver(const fipa::acl::Letter& letter, const fipa::services::ServiceLocation& location, const std::string& receiverName, const std::string& intendedReceiverName);
-
-        /**
          * Service added callback handler
          */
         void serviceAdded(servicediscovery::avahi::ServiceEvent event);
@@ -156,6 +130,11 @@ namespace fipa_services {
          * Connect to another MTS using a known ior
          */
         void connectToMTS(const std::string& serviceName, const std::string& ior);
+        
+        /*
+         * Local delivery to an output port
+         */
+        fipa::acl::AgentIDList deliverLetterLocally(const fipa::acl::Letter& letter);
 
     public:
         /** TaskContext constructor for MessageTransportTask
