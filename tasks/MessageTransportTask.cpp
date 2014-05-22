@@ -101,6 +101,13 @@ bool MessageTransportTask::startHook()
     if(!MessageTransportTaskBase::startHook())
         return false;
 
+    // Also explicitly register all services, if we already have receivers
+    std::vector<std::string> recvs = getReceivers();
+    for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
+    {
+        registerService(*it);
+    }
+    
     return true;
 }
 
@@ -135,6 +142,13 @@ void MessageTransportTask::updateHook()
 void MessageTransportTask::stopHook()
 {
     MessageTransportTaskBase::stopHook();
+    
+    // Explicitly deregister all services
+    std::vector<std::string> recvs = getReceivers();
+    for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
+    {
+        deregisterService(*it);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -256,6 +270,7 @@ std::vector<std::string> MessageTransportTask::getReceivers()
 
 bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_local)
 {
+    RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : adding receiver '" << receiver << "'" << RTT::endlog();
     std::string output_port_name(receiver);
 
     RTT::base::PortInterface *pi = ports()->getPort(receiver);
@@ -280,20 +295,41 @@ bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_l
     bool success = addReceiverPort(out_port, receiver);
     if(success && is_local)
     {
-        fipa::services::ServiceLocator locator;
-        
-        std::vector<fipa::services::ServiceLocation> locations = mDefaultTransport->getServiceLocations();
-        for(std::vector<fipa::services::ServiceLocation>::const_iterator it = locations.begin();
-            it != locations.end(); it++)
-        {
-            locator.addLocation(*it);
-        }
-
-        fipa::services::ServiceDirectoryEntry client(receiver, "mts_client", locator, "Message client of " + getName());
-        mDistributedServiceDirectory->registerService(client);
+        registerService(receiver);
     }
 
     return success;
+}
+
+void MessageTransportTask::deregisterService(std::string receiver)
+{
+    //FIXME
+    try
+    {
+        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : deregistering service '" << receiver << "'" << RTT::endlog();
+        mDistributedServiceDirectory->deregisterService(receiver, fipa::services::ServiceDirectoryEntry::NAME);
+    }
+    catch(const fipa::services::NotFound& e)
+    {
+        RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : deregistering service '" << receiver << "' failed: not found" << RTT::endlog();
+    }
+}
+
+void MessageTransportTask::registerService(std::string receiver)
+{
+    //FIXME
+    RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "' : registering service '" << receiver << "'" << RTT::endlog();
+    fipa::services::ServiceLocator locator;
+        
+    std::vector<fipa::services::ServiceLocation> locations = mDefaultTransport->getServiceLocations();
+    for(std::vector<fipa::services::ServiceLocation>::const_iterator it = locations.begin();
+        it != locations.end(); it++)
+    {
+        locator.addLocation(*it);
+    }
+
+    fipa::services::ServiceDirectoryEntry client(receiver, "mts_client", locator, "Message client of " + getName());
+    mDistributedServiceDirectory->registerService(client);
 }
 
 
@@ -302,13 +338,8 @@ bool MessageTransportTask::removeReceiver(::std::string const & receiver)
     using namespace fipa::services;
     if(removeReceiverPort(receiver))
     {
-        try {
-            mDistributedServiceDirectory->deregisterService(receiver, ServiceDirectoryEntry::NAME);
-            return true;
-        } catch(const NotFound& e)
-        {
-            return false;
-        }
+        deregisterService(receiver);
+        return true;
     }
 
     return false;

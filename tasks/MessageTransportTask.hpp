@@ -115,6 +115,15 @@ namespace fipa_services {
          * \return true on success, false otherwise
          */
         bool removeReceiverPort(const std::string& name);
+        
+        /**
+         * Register a service (a receiver) with the distributed service directory.
+         */
+        void registerService(std::string receiver);
+        /**
+         * Deregister a service (a receiver) with the distributed service directory.
+         */
+        void deregisterService(std::string receiver);
 
         /**
          * Service added callback handler
