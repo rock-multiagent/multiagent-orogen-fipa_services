@@ -37,6 +37,9 @@ task_context "MessageTransportTask" do
 
     property("nic", "/std/string", "eth0").
         doc("Network interface which the device should listen on")
+        
+    property("protocols", "/std/vector</std/string>").
+        doc("Network interface which the device should listen on")
 
     input_port("letters", "/fipa/SerializedLetter").
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
