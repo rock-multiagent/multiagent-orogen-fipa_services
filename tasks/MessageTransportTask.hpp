@@ -86,6 +86,9 @@ namespace fipa_services {
         // Handling of loose coupling of MTS by using UDT communication
         fipa::services::udt::Node* mUDTNode;
         std::string mInterface;
+        
+        // The tcp socket transport
+        fipa::services::tcp::SocketTransport* mSocketTransport;
 
         // Receiver ports for receivers that have been attached via the given operation
         typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;

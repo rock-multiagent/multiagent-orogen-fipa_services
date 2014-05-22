@@ -73,7 +73,8 @@ bool MessageTransportTask::configureHook()
     mUDTNode->listen();
     mInterface = _nic.get();
     // Initialize TCP
-    fipa::services::tcp::SocketTransport::startListening(mMessageTransport);
+    mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport);
+    mSocketTransport->startListening();
     
     // Register the local delivery
     mMessageTransport->registerTransport("local-delivery", 
@@ -82,7 +83,7 @@ bool MessageTransportTask::configureHook()
     mDefaultTransport = new fipa::services::Transport(getName(), mDistributedServiceDirectory,
                                                   boost::assign::list_of
                                                   (fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"))
-                                                  (fipa::services::ServiceLocation(fipa::services::tcp::SocketTransport::getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport")));
+                                                  (fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport")));
     // register the default transport
     mMessageTransport->registerTransport("default-transport", 
                                          boost::bind(&fipa::services::Transport::deliverOrForwardLetter, mDefaultTransport,_1));
@@ -168,7 +169,8 @@ void MessageTransportTask::cleanupHook()
     delete mMessageTransport;
     mMessageTransport = NULL;
     
-    fipa::services::tcp::SocketTransport::stopListening();
+    delete mSocketTransport;
+    mSocketTransport = NULL;
 }
 
 fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::acl::Letter& letter)
