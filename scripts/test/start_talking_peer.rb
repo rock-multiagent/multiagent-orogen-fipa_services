@@ -14,6 +14,7 @@ other_agent = nil
 
 if ARGV.size != 2
     puts "usage: #{$0} <this-agent> <peer-to-communicate-with>"
+    exit 0
 else
     this_agent = ARGV[0]
     other_agent = ARGV[1]
