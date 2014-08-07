@@ -23,7 +23,7 @@ Orocos.run 'fipa_services::MessageTransportTask' => 'mts_module_receiver' do
     ## Get the task context##
     mts_module = Orocos.name_service.get 'mts_module_receiver'
 
-    mts_module.protocols = ["udt"]
+    mts_module.protocols = ["udt","tcp"]
     mts_module.configure
     mts_module.start
 
