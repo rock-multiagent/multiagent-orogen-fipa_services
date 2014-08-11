@@ -42,7 +42,7 @@ task_context "MessageTransportTask" do
         doc("Network interface which the device should listen on")
         
     property("known_addresses", "/std/vector</std/string>").
-       doc("Complete UDT addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=IP:port'.")
+       doc("Complete UDT addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=udt://IP:port'.")
         
     property("fixed_port", "int").
         doc("This property can be used to set a fixed UDT port instead of a random one. This will fail if the port is blocked.")

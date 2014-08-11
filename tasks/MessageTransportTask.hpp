@@ -89,6 +89,10 @@ namespace fipa_services {
         
         // The tcp socket transport
         fipa::services::tcp::SocketTransport* mSocketTransport;
+        
+        // Service directory entries of other agents (where mDNS is not supported).
+        // They will be all registered with the DSD.
+        std::vector<fipa::services::ServiceDirectoryEntry> otherServiceDirectoryEntries;
 
         // Receiver ports for receivers that have been attached via the given operation
         typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;

@@ -7,6 +7,7 @@
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
 #include <boost/assign/list_of.hpp>
+#include <boost/algorithm/string.hpp>
 
 #include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
@@ -103,6 +104,24 @@ bool MessageTransportTask::configureHook()
     // register the default transport
     mMessageTransport->registerTransport("default-transport", 
                                          boost::bind(&fipa::services::Transport::deliverOrForwardLetter, mDefaultTransport,_1));
+    
+    
+    // Fill the list of other service locations from the configuration property.
+    std::vector<std::string> addresses = _known_addresses.get();
+    for(std::vector<std::string>::const_iterator it = addresses.begin(); it != addresses.end(); ++it)
+    {
+        // Split by the '='
+        std::vector<std::string> tokens;
+        boost::split(tokens, *it, boost::is_any_of("="));
+        
+        fipa::services::ServiceLocator locator;
+        fipa::services::ServiceLocation location = fipa::services::ServiceLocation(tokens[1], "fipa::services::udt::UDTTransport");
+        locator.addLocation(location);
+
+        fipa::services::ServiceDirectoryEntry entry (tokens[0], "mts_client", locator, "Message client");
+        //mDistributedServiceDirectory->registerService(entry);
+        otherServiceDirectoryEntries.push_back(entry);
+    }
 
     return true;
 }
@@ -124,6 +143,13 @@ bool MessageTransportTask::startHook()
     {
         registerService(*it);
     }
+    
+    // And register other known addresses
+    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = otherServiceDirectoryEntries.begin(); it != otherServiceDirectoryEntries.end(); it++)
+    {
+        mDistributedServiceDirectory->registerService(*it);
+    }
+    // TODO where and when do we deregister?
     
     return true;
 }
