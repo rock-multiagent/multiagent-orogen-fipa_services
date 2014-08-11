@@ -83,7 +83,9 @@ bool MessageTransportTask::configureHook()
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using UDT protocol" << RTT::endlog();
         // Initalize UDT
         mUDTNode = new fipa::services::udt::Node();
-        mUDTNode->listen();
+        
+        // Use fixed port if set (otherwise it is 0, which is default)
+        mUDTNode->listen(_fixed_udt_port.get());
         
         serviceLocations.push_back(fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"));
     }
