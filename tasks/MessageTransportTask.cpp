@@ -85,7 +85,7 @@ bool MessageTransportTask::configureHook()
         mUDTNode = new fipa::services::udt::Node();
         
         // Use fixed port if set (otherwise it is 0, which is default)
-        mUDTNode->listen(_fixed_udt_port.get());
+        mUDTNode->listen(_listen_udt_port.get());
         
         serviceLocations.push_back(fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"));
     }

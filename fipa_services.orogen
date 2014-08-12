@@ -44,8 +44,8 @@ task_context "MessageTransportTask" do
     property("known_addresses", "/std/vector</std/string>").
        doc("Complete UDT addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=udt://IP:port'.")
         
-    property("fixed_udt_port", "int").
-        doc("This property can be used to set a fixed UDT port instead of a random one. This will fail if the port is blocked.")
+    property("listen_udt_port", "int", 0).
+        doc("This property can be used to set a fixed UDT port to listen on instead of a random one. This will fail if the port is blocked.")
 
     input_port("letters", "/fipa/SerializedLetter").
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
