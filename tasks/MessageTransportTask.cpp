@@ -151,7 +151,6 @@ bool MessageTransportTask::startHook()
     {
         mDistributedServiceDirectory->registerService(*it);
     }
-    // TODO where and when do we deregister?
     
     return true;
 }
@@ -198,6 +197,12 @@ void MessageTransportTask::stopHook()
     for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
     {
         deregisterService(*it);
+    }
+    
+    // And deregister other known addresses
+    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = otherServiceDirectoryEntries.begin(); it != otherServiceDirectoryEntries.end(); it++)
+    {
+        deregisterService(it->getName());
     }
 }
 
