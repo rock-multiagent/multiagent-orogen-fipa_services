@@ -76,6 +76,23 @@ bool MessageTransportTask::configureHook()
         _protocols.set(defaultP);
     }
     
+    // Extract transport configurations
+    fipa::services::message_transport::MessageTransportConfiguration udtConfiguration;
+    fipa::services::message_transport::MessageTransportConfiguration tcpConfiguration;
+    
+    std::vector<fipa::services::message_transport::MessageTransportConfiguration> transport_configurations = _message_transport_configuration.get();
+    for(std::vector<fipa::services::message_transport::MessageTransportConfiguration>::const_iterator it = transport_configurations.begin();
+        it != transport_configurations.end(); ++it)
+    {
+        if(it->type == "UDT")
+        {
+            udtConfiguration = *it;
+        } else if(it->type == "TCP")
+        {
+            tcpConfiguration = *it;
+        }
+    }
+    
     std::vector<fipa::services::ServiceLocation> serviceLocations;
     std::vector<std::string> protocols = _protocols.get();
     if(std::find(protocols.begin(), protocols.end(), "udt") != protocols.end())
@@ -85,13 +102,22 @@ bool MessageTransportTask::configureHook()
         mUDTNode = new fipa::services::udt::Node();
         
         // Use fixed port if set (otherwise it is 0, which is default)
-        mUDTNode->listen(_listen_udt_port.get());
+        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using UDT port " << udtConfiguration.listening_port << RTT::endlog();
+        mUDTNode->listen(udtConfiguration.listening_port);
         
         serviceLocations.push_back(fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"));
     }
     if(std::find(protocols.begin(), protocols.end(), "tcp") != protocols.end())
     {
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using TCP protocol" << RTT::endlog();
+        
+        if(tcpConfiguration.listening_port != 0)
+        {
+            // Not supported yet
+            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << " : Setting a TCP listen port is currently not supported." << RTT::endlog();
+            throw std::runtime_error("Setting a TCP listen port is currently not supported.");
+        }
+        
         // Initialize TCP
         mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport);
         mSocketTransport->startListening();

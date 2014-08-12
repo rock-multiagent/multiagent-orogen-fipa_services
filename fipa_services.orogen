@@ -19,6 +19,7 @@ using_library "service_discovery"
 
 import_types_from "fipa_acl/message_generator/serialized_letter.h"
 import_types_from "fipa_services/ServiceDirectoryEntry.hpp"
+import_types_from "fipa_services/MessageTransport.hpp"
 import_types_from "base"
 
 # The FIPA message bus relies on the application of so called MTS's
@@ -44,8 +45,8 @@ task_context "MessageTransportTask" do
     property("known_addresses", "/std/vector</std/string>").
        doc("Complete UDT addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=udt://IP:port'.")
         
-    property("listen_udt_port", "int", 0).
-        doc("This property can be used to set a fixed UDT port to listen on instead of a random one. This will fail if the port is blocked.")
+    property("message_transport_configuration", "/std/vector</fipa/services/message_transport/MessageTransportConfiguration>").
+        doc("This property can be used to configure supported transports, i.e. to set a fixed UDT port to listen on instead of a random one. This will fail if the port is blocked.")
 
     input_port("letters", "/fipa/SerializedLetter").
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
