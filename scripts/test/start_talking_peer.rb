@@ -30,6 +30,7 @@ Orocos.run "fipa_services_test" do
         raise
     end
 
+    mts_module.nic = "eth0"
     mts_module.configure
     mts_module.start
 

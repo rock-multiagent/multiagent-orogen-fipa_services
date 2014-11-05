@@ -11,7 +11,8 @@ class MTS
         @orocos_task = orocos_task
     end
 
-    def start
+    def start(nic = "eth0")
+        orocos_task.nic = nic
         orocos_task.configure
         orocos_task.start
     end
