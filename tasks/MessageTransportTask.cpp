@@ -66,7 +66,7 @@ bool MessageTransportTask::configureHook()
 
     fipa::acl::AgentID agentName(this->getName() + "-" + std::string(mtsUID));
     mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName);
-        
+
     mInterface = _nic.get();
     // Set the default (only udt) for protocols property if unset
     if(_protocols.get().empty())
@@ -75,11 +75,11 @@ bool MessageTransportTask::configureHook()
         defaultP.push_back("udt");
         _protocols.set(defaultP);
     }
-    
+
     // Extract transport configurations
     fipa::services::message_transport::MessageTransportConfiguration udtConfiguration;
     fipa::services::message_transport::MessageTransportConfiguration tcpConfiguration;
-    
+
     std::vector<fipa::services::message_transport::MessageTransportConfiguration> transport_configurations = _message_transport_configuration.get();
     for(std::vector<fipa::services::message_transport::MessageTransportConfiguration>::const_iterator it = transport_configurations.begin();
         it != transport_configurations.end(); ++it)
@@ -92,7 +92,7 @@ bool MessageTransportTask::configureHook()
             tcpConfiguration = *it;
         }
     }
-    
+
     std::vector<fipa::services::ServiceLocation> serviceLocations;
     std::vector<std::string> protocols = _protocols.get();
     if(std::find(protocols.begin(), protocols.end(), "udt") != protocols.end())
@@ -100,35 +100,35 @@ bool MessageTransportTask::configureHook()
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using UDT protocol" << RTT::endlog();
         // Initalize UDT
         mUDTNode = new fipa::services::udt::Node();
-        
+
         // Use fixed port if set (otherwise it is 0, which is default)
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using UDT port " << udtConfiguration.listening_port << RTT::endlog();
         mUDTNode->listen(udtConfiguration.listening_port);
-        
+
         serviceLocations.push_back(fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"));
     }
     if(std::find(protocols.begin(), protocols.end(), "tcp") != protocols.end())
     {
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using TCP protocol" << RTT::endlog();
-        
+
         // Initialize TCP
         mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport);
         mSocketTransport->listen(tcpConfiguration.listening_port);
-        
+
         serviceLocations.push_back(fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport"));
     }
-    
+
     // Register default transports such as udt and tcp -- these come with the underlying
     // library fipa_services
     mDefaultTransport = new fipa::services::Transport(getName(), mDistributedServiceDirectory, serviceLocations);
     // Register the local delivery
-    mMessageTransport->registerTransport("local-delivery", 
+    mMessageTransport->registerTransport("local-delivery",
                                          boost::bind(&fipa_services::MessageTransportTask::deliverLetterLocally, this,_1));
     // register the default transport
-    mMessageTransport->registerTransport("default-transport", 
+    mMessageTransport->registerTransport("default-transport",
                                          boost::bind(&fipa::services::Transport::deliverOrForwardLetter, mDefaultTransport,_1));
-    
-    
+
+
     // Fill the list of other service locations from the configuration property.
     std::vector<std::string> addresses = _known_addresses.get();
     for(std::vector<std::string>::const_iterator it = addresses.begin(); it != addresses.end(); ++it)
@@ -136,7 +136,7 @@ bool MessageTransportTask::configureHook()
         // Split by the '='
         std::vector<std::string> tokens;
         boost::split(tokens, *it, boost::is_any_of("="));
-        
+
         fipa::services::ServiceLocator locator;
         fipa::services::ServiceLocation location = fipa::services::ServiceLocation(tokens[1], "fipa::services::udt::UDTTransport");
         locator.addLocation(location);
@@ -177,13 +177,13 @@ bool MessageTransportTask::startHook()
     {
         registerService(*it);
     }
-    
+
     // And register other known addresses
     for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = otherServiceDirectoryEntries.begin(); it != otherServiceDirectoryEntries.end(); it++)
     {
         mDistributedServiceDirectory->registerService(*it);
     }
-    
+
     return true;
 }
 
@@ -201,7 +201,7 @@ void MessageTransportTask::updateHook()
         RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : intended receivers: " << be.getIntendedReceivers() << ", content: " << letter.getACLMessage().getContent() << RTT::endlog();
         mMessageTransport->handle(letter);
     }
-    
+
     // Only get new UDT letters, if UDT is activated
     std::vector<std::string> protocols = _protocols.get();
     if(std::find(protocols.begin(), protocols.end(), "udt") != protocols.end())
@@ -223,14 +223,14 @@ void MessageTransportTask::updateHook()
 void MessageTransportTask::stopHook()
 {
     MessageTransportTaskBase::stopHook();
-    
+
     // Explicitly deregister all services
     std::vector<std::string> recvs = getReceivers();
     for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
     {
         deregisterService(*it);
     }
-    
+
     // And deregister other known addresses
     for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = otherServiceDirectoryEntries.begin(); it != otherServiceDirectoryEntries.end(); it++)
     {
@@ -254,7 +254,7 @@ void MessageTransportTask::cleanupHook()
 
     delete mMessageTransport;
     mMessageTransport = NULL;
-    
+
     delete mSocketTransport;
     mSocketTransport = NULL;
 }
@@ -278,7 +278,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
         std::string receiverName = rit->getName();
         fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
 
-        // Check for local receivers 
+        // Check for local receivers
         // XXX duplicate: done in each forwarding method
         fipa::services::ServiceDirectoryList list = mDistributedServiceDirectory->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, false);
         if(list.empty())
@@ -293,7 +293,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
             ServiceDirectoryEntry serviceEntry = list.front();
             ServiceLocator locator = serviceEntry.getLocator();
             ServiceLocation location = locator.getFirstLocation();
-            
+
             // Check against the first service location (should be enough)
             if(location == mDefaultTransport->getServiceLocations()[0])
             {
@@ -318,7 +318,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
                         } else {
                             clientPort->write(serializedLetter);
                             // Remove the receiver from the delivery list
-                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), *rit); 
+                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), *rit);
                             if(it != remainingReceivers.end())
                             {
                                 remainingReceivers.erase(it);
@@ -406,7 +406,7 @@ void MessageTransportTask::registerService(std::string receiver)
 {
     RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : registering service '" << receiver << "'" << RTT::endlog();
     fipa::services::ServiceLocator locator;
-        
+
     std::vector<fipa::services::ServiceLocation> locations = mDefaultTransport->getServiceLocations();
     for(std::vector<fipa::services::ServiceLocation>::const_iterator it = locations.begin();
         it != locations.end(); it++)
