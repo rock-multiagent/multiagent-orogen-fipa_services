@@ -111,16 +111,9 @@ bool MessageTransportTask::configureHook()
     {
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using TCP protocol" << RTT::endlog();
         
-        if(tcpConfiguration.listening_port != 0)
-        {
-            // Not supported yet
-            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << " : Setting a TCP listen port is currently not supported." << RTT::endlog();
-            throw std::runtime_error("Setting a TCP listen port is currently not supported.");
-        }
-        
         // Initialize TCP
         mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport);
-        mSocketTransport->startListening();
+        mSocketTransport->listen(tcpConfiguration.listening_port);
         
         serviceLocations.push_back(fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport"));
     }
