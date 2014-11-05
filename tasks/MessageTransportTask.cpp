@@ -118,6 +118,8 @@ bool MessageTransportTask::configureHook()
         serviceLocations.push_back(fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport"));
     }
     
+    // Register default transports such as udt and tcp -- these come with the underlying
+    // library fipa_services
     mDefaultTransport = new fipa::services::Transport(getName(), mDistributedServiceDirectory, serviceLocations);
     // Register the local delivery
     mMessageTransport->registerTransport("local-delivery", 
@@ -298,7 +300,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
                 // Local delivery
                 RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' delivery to local client" << RTT::endlog();
 
-                // Deliver the message to local client, i.e. the corresponding receiver has a dedicated output port available on this MTS
+                // Deliver the message to local clients, i.e. a corresponding receiver has a dedicated output port available on this MTS
                 ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
                 if(portsIt == mReceivers.end())
                 {
@@ -315,7 +317,7 @@ fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::ac
                             continue;
                         } else {
                             clientPort->write(serializedLetter);
-                            // Remove the receiver
+                            // Remove the receiver from the delivery list
                             fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), *rit); 
                             if(it != remainingReceivers.end())
                             {
