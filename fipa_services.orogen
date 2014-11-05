@@ -30,17 +30,17 @@ import_types_from "base"
 # receivers and will write the information to the receivers 
 # according to the receivers named in the FIPA message
 #
-# Warning: components should be started with
-# the '--sd-domain' option to allow for autoconnection behavior
+# Warning: components should be not be started with
+# the '--sd-domain' option
 #
 task_context "MessageTransportTask" do
     needs_configuration
 
     property("nic", "/std/string", "eth0").
-        doc("Network interface which the device should listen on")
+        doc("Network interface to which a listening socket should be bound")
         
     property("protocols", "/std/vector</std/string>").
-        doc("Network interface which the device should listen on")
+        doc("Optional list of protocols that can be used for communication: UDT, TCP; default is UDT")
         
     property("known_addresses", "/std/vector</std/string>").
        doc("Complete UDT addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=udt://IP:port'.")
@@ -63,7 +63,7 @@ task_context "MessageTransportTask" do
     operation("addReceiver").
         returns("bool").
         argument("receiver", "/std/string/","the name of the receiver").
-        argument("is_local", "bool", "flag it the receiver is a local client (or another mts)").
+        argument("is_local", "bool", "flag it the receiver is a local client (in contrast to being another mts)").
         doc("Upon adding of a receiver, a new output port for this receiver is generated. Output port will be of receivers name (if successful)")
 
     operation("removeReceiver").
