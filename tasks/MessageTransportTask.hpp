@@ -37,28 +37,29 @@ namespace fipa_services {
      * \brief The task context provides and requires services. It uses an ExecutionEngine to perform its functions.
      * Essential interfaces are operations, data flow ports and properties. These interfaces have been defined using the oroGen specification.
      * In order to modify the interfaces you should (re)use oroGen and rely on the associated workflow.
-     * The FIPA message bus relies on the application of so called MTS's
-     *  (Message Transport Services) - mainly to allow
-     *  for inter-robot communication.
-     *  
-     *  One MTS per robot/environment is responsible for delivering message
-     *  to a set of components, here identified by an environment id as part
-     *  which is part of the components name: <env-id>_<type>.
-     *  
-     *  An MTS will be recognized by its type suffix: <env-id>_MTA, where
-     *  the <env-id> follows <robot-type>_<id> (thus the second underscore
-     *  separates <env-id> and <type>, e.g. crex_0_MTA)
-     *  
-     *  An MTS allows to register
-     *  receivers and will write the information to the receivers
-     *  according to the receivers named in the FIPA message
-     *  
-     *  Warning: root modules and derived components should *NOT* be started with
-     *  the '--sd-domain' option. Instead the property 'avahi_type' should be used,
-     *  to set domain and type (_udp,_tcp).
-     *  Otherwise a runtime condition exists between receiving events from the
-     *  underlying service_discovery and registering callbacks for these events.
-     *  !! -- this requires to be fixed in upcoming versions -- !!
+     *
+     * This oroGen task represents a message transport task
+     * to allow to allow for inter-robot communication in a p2p communication network.
+     *
+     * Typically this instance will be controlled from the ruby layer (refer to bindings)
+     *
+     * Calling the operation 'addReceiver' will trigger the creation of an output port of a predefined name, e.g. 'agent_0'
+     *
+     * The client can then connect to this output port and any message addressed to 
+     * 'agent_0' will be delivered to this port.
+     * This agent name
+     *
+     * \beginverbatim
+         #include <fipa_acl/fipa_acl.h>
+
+         fipa::acl::ACLMessage message;
+         message.setPerformative(AclMessage::REQUEST);
+         ...
+         fipa::acl::Letter letter(message, representation::BITEFFICIENT);
+         fipa::SerializedLetter serializedLetter(letter, representation::BITEFFICIENT);
+     * \endverbatim
+     *
+     *
      * \details
      * The name of a TaskContext is primarily defined via:
      \verbatim
