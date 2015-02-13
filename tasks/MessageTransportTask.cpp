@@ -30,15 +30,32 @@ namespace fipa_services
 MessageTransportTask::MessageTransportTask(std::string const& name)
     : MessageTransportTaskBase(name)
     , mMessageTransport(0)
-{}
+{
+    initializeMessageTransport();
+}
 
 MessageTransportTask::MessageTransportTask(std::string const& name, RTT::ExecutionEngine* engine)
     : MessageTransportTaskBase(name, engine)
     , mMessageTransport(0)
-{}
+{
+    initializeMessageTransport();
+}
 
 MessageTransportTask::~MessageTransportTask()
 {}
+
+void MessageTransportTask::initializeMessageTransport()
+{
+    // Make sure the MTS name is unique for each running instance
+    uuid_t uuid;
+    uuid_generate(uuid);
+    char mtsUID[512];
+    uuid_unparse(uuid, mtsUID);
+
+    fipa::acl::AgentID agentName(this->getName() + "-" + std::string(mtsUID));
+    fipa::services::ServiceDirectory::Ptr serviceDirectory(new fipa::services::DistributedServiceDirectory());
+    mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName, serviceDirectory);
+}
 
 ////////////////////////////////HOOKS///////////////////////////////
 bool MessageTransportTask::configureHook()
@@ -48,16 +65,11 @@ bool MessageTransportTask::configureHook()
         return false;
     }
 
-    // Make sure the MTS name is unique for each running instance
-    uuid_t uuid;
-    uuid_generate(uuid);
-    char mtsUID[512];
-    uuid_unparse(uuid, mtsUID);
-
-    fipa::acl::AgentID agentName(this->getName() + "-" + std::string(mtsUID));
-    fipa::services::ServiceDirectory::Ptr serviceDirectory(new fipa::services::DistributedServiceDirectory());
-
-    mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName, serviceDirectory);
+    // After cleanup
+    if(mMessageTransport == 0)
+    {
+        initializeMessageTransport();
+    }
 
     // Apply transport configurations
     std::vector<fipa::services::transports::Configuration> transport_configurations = _transport_configurations.get();

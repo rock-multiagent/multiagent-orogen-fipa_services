@@ -133,6 +133,11 @@ namespace fipa_services {
          */
         bool deliverLetterLocally(const std::string& receiverName, const fipa::acl::Letter& letter);
 
+        /**
+         * Initialize the message transport
+         */
+        void initializeMessageTransport();
+
     public:
         /** TaskContext constructor for MessageTransportTask
          * \param name Name of the task. This name needs to be unique to make it identifiable via nameservices.
