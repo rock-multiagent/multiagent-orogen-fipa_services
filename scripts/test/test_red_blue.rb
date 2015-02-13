@@ -11,14 +11,16 @@ Orocos.initialize
 #
 # 1. send messsage from red_client to blue_client --> should succeed
 # 2. send message from red_client to blue_unknown_client --> should fail
-Orocos.run "fipa_services::MessageTransportTask" => ["blue-mts", "red-mts"] , :valgrind => true do
+Orocos.run "fipa_services::MessageTransportTask" => ["blue-mts", "red-mts"] , :valgrind => false do
 
     blue = TaskContext.get 'blue-mts'
+    blue.transports = ["tcp"]
     blue.configure
     blue.start
     blue.addReceiver("blue_client", true)
 
     red = TaskContext.get 'red-mts'
+    red.transports = ["tcp"]
     red.configure
     red.start
     red.addReceiver("red_client", true)
@@ -72,6 +74,7 @@ Orocos.run "fipa_services::MessageTransportTask" => ["blue-mts", "red-mts"] , :v
 
         puts "Waiting"
         sleep 1
+        Readline::readline("Press ENTER to proceed")
     end
     Readline::readline("Press ENTER to proceed")
 end
