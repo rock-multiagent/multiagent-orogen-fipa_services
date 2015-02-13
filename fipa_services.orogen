@@ -32,6 +32,11 @@ import_types_from "fipa_services/transports/Configuration.hpp"
 # Warning: components should be not be started with
 # the '--sd-domain' option
 #
+# By default the distributed service directory can be
+# monitored with the following commands:
+#    - service_discovery-browse _fipa_service_discovery._udp
+#    - avahi-browse _fipa_service_discovery._udp
+#
 task_context "MessageTransportTask" do
     needs_configuration
 
