@@ -21,7 +21,7 @@ else
 end
 
 Orocos.initialize
-Orocos.run "fipa_services_test" do
+Orocos.run "fipa_services::MessageTransportTask" => "mts_0" do
 
     begin
         mts_module = TaskContext.get "mts_0"
@@ -30,7 +30,6 @@ Orocos.run "fipa_services_test" do
         raise
     end
 
-    mts_module.nic = "eth0"
     mts_module.configure
     mts_module.start
 

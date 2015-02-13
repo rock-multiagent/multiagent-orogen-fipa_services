@@ -11,8 +11,7 @@ class MTS
         @orocos_task = orocos_task
     end
 
-    def start(nic = "eth0")
-        orocos_task.nic = nic
+    def start
         orocos_task.configure
         orocos_task.start
     end
@@ -60,7 +59,7 @@ end
 
 
 Orocos.initialize
-Orocos.run "fipa_services_test", :wait => 20, :valgrind => false do 
+Orocos.run "fipa_services::MessageTransportTask" => [ "mts_0", "mts_1", "mts_2", "mts_3" ], :wait => 10, :valgrind => false do 
     # Resolve orocos tasks
     begin
         all_mts.each do |mts|

@@ -23,8 +23,6 @@ Orocos.run 'fipa_services::MessageTransportTask' => 'mts_module_receiver' do
     ## Get the task context##
     mts_module = Orocos.name_service.get 'mts_module_receiver'
 
-    mts_module.protocols = ["udt","tcp"]
-    mts_module.nic = "eth0"
     mts_module.configure
     mts_module.start
 
@@ -37,6 +35,6 @@ Orocos.run 'fipa_services::MessageTransportTask' => 'mts_module_receiver' do
         if letter = letter_reader.read_new
             puts "#{this_agent}: received letter: #{letter.getACLMessage.getContent}"
         end
-        sleep 1
+        sleep 0.01
     end
 end
