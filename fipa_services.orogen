@@ -19,8 +19,7 @@ using_library "service_discovery"
 
 import_types_from "fipa_acl/message_generator/serialized_letter.h"
 import_types_from "fipa_services/ServiceDirectoryEntry.hpp"
-import_types_from "fipa_services/MessageTransport.hpp"
-import_types_from "base"
+import_types_from "fipa_services/transports/Configuration.hpp"
 
 # The FIPA message bus relies on the application of so called MTS's
 # (Message Transport Services) - mainly to allow
@@ -36,19 +35,16 @@ import_types_from "base"
 task_context "MessageTransportTask" do
     needs_configuration
 
-    property("nic", "/std/string", "eth0").
-        doc("Network interface to which a listening socket should be bound")
-        
-    property("protocols", "/std/vector</std/string>").
-        doc("Optional list of protocols that can be used for communication: UDT, TCP; default is UDT")
+    property("transports", "/std/vector</std/string>").
+        doc("Optional list of transports that can be used for communication: UDT, TCP; default is UDT")
         
     property("known_addresses", "/std/vector</std/string>").
-       doc("Complete UDT addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=udt://IP:port'.")
+       doc("Complete transport addresses (IP and port) of known agents that do not support mDNS. The format is 'agentName=udt://IP:port'.")
 
     property("local_receivers", "/std/vector</std/string>").
        doc("Optional list of local receivers -- triggers the creation of corresponding ports at startup of this component")
         
-    property("message_transport_configuration", "/std/vector</fipa/services/message_transport/MessageTransportConfiguration>").
+    property("transport_configurations", "/std/vector</fipa/services/transports/Configuration>").
         doc("This property can be used to configure supported transports, i.e. to set a fixed UDT port to listen on instead of a random one. This will fail if the port is blocked.")
 
     input_port("letters", "/fipa/SerializedLetter").
@@ -62,13 +58,13 @@ task_context "MessageTransportTask" do
 
     operation("addReceiver").
         returns("bool").
-        argument("receiver", "/std/string/","the name of the receiver").
+        argument("receiver", "/std/string","the name of the receiver").
         argument("is_local", "bool", "flag it the receiver is a local client (in contrast to being another mts)").
         doc("Upon adding of a receiver, a new output port for this receiver is generated. Output port will be of receivers name (if successful)")
 
     operation("removeReceiver").
         returns("bool").
-        argument("receiver", "/std/string/","the name of the receiver").
+        argument("receiver", "/std/string","the name of the receiver").
         doc("Upon removal of a receiver, the corresponding output port is removed")
 
     operation("getReceivers").

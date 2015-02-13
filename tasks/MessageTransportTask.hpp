@@ -12,18 +12,8 @@
 
 namespace fipa {
 namespace services {
-    class DistributedServiceDirectory;
     class Transport;
     
-    namespace udt {
-        class Node;
-        class OutgoingConnection;
-    }
-    
-    namespace tcp {
-        class SocketTransport;
-    }
-
     namespace message_transport {
         class MessageTransport;
     }
@@ -78,22 +68,12 @@ namespace fipa_services {
 
         fipa::services::message_transport::MessageTransport* mMessageTransport;
         
-        // Default Transport
-        fipa::services::Transport* mDefaultTransport;
-
-        // Identify available services using the distributed service directory
-        fipa::services::DistributedServiceDirectory* mDistributedServiceDirectory;
-
-        // Handling of loose coupling of MTS by using UDT communication
-        fipa::services::udt::Node* mUDTNode;
         std::string mInterface;
-        
-        // The tcp socket transport
-        fipa::services::tcp::SocketTransport* mSocketTransport;
+        std::string mClientServiceType;
         
         // Service directory entries of other agents (where mDNS is not supported).
         // They will be all registered with the DSD.
-        std::vector<fipa::services::ServiceDirectoryEntry> otherServiceDirectoryEntries;
+        std::vector<fipa::services::ServiceDirectoryEntry> mExtraServiceDirectoryEntries;
 
         // Receiver ports for receivers that have been attached via the given operation
         typedef std::map<std::string, RTT::base::OutputPortInterface*> ReceiverPorts;
@@ -151,7 +131,7 @@ namespace fipa_services {
         /*
          * Local delivery to an output port
          */
-        fipa::acl::AgentIDList deliverLetterLocally(const fipa::acl::Letter& letter);
+        bool deliverLetterLocally(const std::string& receiverName, const fipa::acl::Letter& letter);
 
     public:
         /** TaskContext constructor for MessageTransportTask

@@ -12,8 +12,6 @@
 #include <fipa_services/MessageTransport.hpp>
 #include <fipa_services/DistributedServiceDirectory.hpp>
 #include <fipa_services/transports/Transport.hpp>
-#include <fipa_services/transports/tcp/SocketTransport.hpp>
-#include <fipa_services/transports/udt/UDTTransport.hpp>
 
 #include <rtt/transports/corba/TaskContextServer.hpp>
 #include <rtt/transports/corba/TaskContextProxy.hpp>
@@ -32,15 +30,11 @@ namespace fipa_services
 MessageTransportTask::MessageTransportTask(std::string const& name)
     : MessageTransportTaskBase(name)
     , mMessageTransport(0)
-    , mDistributedServiceDirectory(0)
-    , mUDTNode(0)
 {}
 
 MessageTransportTask::MessageTransportTask(std::string const& name, RTT::ExecutionEngine* engine)
     : MessageTransportTaskBase(name, engine)
     , mMessageTransport(0)
-    , mDistributedServiceDirectory(0)
-    , mUDTNode(0)
 {}
 
 MessageTransportTask::~MessageTransportTask()
@@ -54,10 +48,6 @@ bool MessageTransportTask::configureHook()
         return false;
     }
 
-    mDistributedServiceDirectory = new fipa::services::DistributedServiceDirectory();
-
-    // Create internal message transport service
-
     // Make sure the MTS name is unique for each running instance
     uuid_t uuid;
     uuid_generate(uuid);
@@ -65,97 +55,54 @@ bool MessageTransportTask::configureHook()
     uuid_unparse(uuid, mtsUID);
 
     fipa::acl::AgentID agentName(this->getName() + "-" + std::string(mtsUID));
-    mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName);
+    fipa::services::ServiceDirectory::Ptr serviceDirectory(new fipa::services::DistributedServiceDirectory());
 
-    mInterface = _nic.get();
-    // Set the default (only udt) for protocols property if unset
-    if(_protocols.get().empty())
+    mMessageTransport = new fipa::services::message_transport::MessageTransport(agentName, serviceDirectory);
+
+    // Apply transport configurations
+    std::vector<fipa::services::transports::Configuration> transport_configurations = _transport_configurations.get();
+    mMessageTransport->configure(transport_configurations);
+
+    // Transport activation based on the selected set of transports
+    std::vector<std::string> transports = _transports.get();
+    if(transports.empty())
     {
-        std::vector<std::string> defaultP;
-        defaultP.push_back("udt");
-        _protocols.set(defaultP);
+        transports.push_back("UDT");
     }
+    mMessageTransport->activateTransports(transports);
 
-    // Extract transport configurations
-    fipa::services::message_transport::MessageTransportConfiguration udtConfiguration;
-    fipa::services::message_transport::MessageTransportConfiguration tcpConfiguration;
+    // Register local message transport
+    mMessageTransport->registerMessageTransport("local-delivery",
+                                         boost::bind(&fipa_services::MessageTransportTask::deliverLetterLocally, this,_1,_2));
 
-    std::vector<fipa::services::message_transport::MessageTransportConfiguration> transport_configurations = _message_transport_configuration.get();
-    for(std::vector<fipa::services::message_transport::MessageTransportConfiguration>::const_iterator it = transport_configurations.begin();
-        it != transport_configurations.end(); ++it)
-    {
-        if(it->type == "UDT")
-        {
-            udtConfiguration = *it;
-        } else if(it->type == "TCP")
-        {
-            tcpConfiguration = *it;
-        }
-    }
+    // // Fill the list of other service locations from the configuration property.
+    // std::vector<std::string> addresses = _known_addresses.get();
+    // for(std::vector<std::string>::const_iterator it = addresses.begin(); it != addresses.end(); ++it)
+    // {
+    //     // Split by the '='
+    //     std::vector<std::string> tokens;
+    //     boost::split(tokens, *it, boost::is_any_of("="));
 
-    std::vector<fipa::services::ServiceLocation> serviceLocations;
-    std::vector<std::string> protocols = _protocols.get();
-    if(std::find(protocols.begin(), protocols.end(), "udt") != protocols.end())
-    {
-        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using UDT protocol" << RTT::endlog();
-        // Initalize UDT
-        mUDTNode = new fipa::services::udt::Node();
+    //     fipa::services::ServiceLocator locator;
+    //     fipa::services::ServiceLocation location = fipa::services::ServiceLocation(tokens[1], "fipa::services::udt::UDTTransport");
+    //     locator.addLocation(location);
 
-        // Use fixed port if set (otherwise it is 0, which is default)
-        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using UDT port " << udtConfiguration.listening_port << RTT::endlog();
-        mUDTNode->listen(udtConfiguration.listening_port);
+    //     fipa::services::ServiceDirectoryEntry entry (tokens[0], mClientServiceType, locator, "Message client");
+    //     //mDistributedServiceDirectory->registerService(entry);
+    //     otherServiceDirectoryEntries.push_back(entry);
+    // }
 
-        serviceLocations.push_back(fipa::services::ServiceLocation(mUDTNode->getAddress(mInterface).toString(), "fipa::services::udt::UDTTransport"));
-    }
-    if(std::find(protocols.begin(), protocols.end(), "tcp") != protocols.end())
-    {
-        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << " : Using TCP protocol" << RTT::endlog();
-
-        // Initialize TCP
-        mSocketTransport = new fipa::services::tcp::SocketTransport(mMessageTransport);
-        mSocketTransport->listen(tcpConfiguration.listening_port);
-
-        serviceLocations.push_back(fipa::services::ServiceLocation(mSocketTransport->getAddress(mInterface).toString(), "fipa::services::tcp::SocketTransport"));
-    }
-
-    // Register default transports such as udt and tcp -- these come with the underlying
-    // library fipa_services
-    mDefaultTransport = new fipa::services::Transport(getName(), mDistributedServiceDirectory, serviceLocations);
-    // Register the local delivery
-    mMessageTransport->registerTransport("local-delivery",
-                                         boost::bind(&fipa_services::MessageTransportTask::deliverLetterLocally, this,_1));
-    // register the default transport
-    mMessageTransport->registerTransport("default-transport",
-                                         boost::bind(&fipa::services::Transport::deliverOrForwardLetter, mDefaultTransport,_1));
-
-
-    // Fill the list of other service locations from the configuration property.
-    std::vector<std::string> addresses = _known_addresses.get();
-    for(std::vector<std::string>::const_iterator it = addresses.begin(); it != addresses.end(); ++it)
-    {
-        // Split by the '='
-        std::vector<std::string> tokens;
-        boost::split(tokens, *it, boost::is_any_of("="));
-
-        fipa::services::ServiceLocator locator;
-        fipa::services::ServiceLocation location = fipa::services::ServiceLocation(tokens[1], "fipa::services::udt::UDTTransport");
-        locator.addLocation(location);
-
-        fipa::services::ServiceDirectoryEntry entry (tokens[0], "mts_client", locator, "Message client");
-        //mDistributedServiceDirectory->registerService(entry);
-        otherServiceDirectoryEntries.push_back(entry);
-    }
-
-    // Create the output ports for known receivers
-    std::vector<std::string> localReceivers = _local_receivers.get();
-    for(std::vector<std::string>::const_iterator it = localReceivers.begin(); it != localReceivers.end(); ++it)
-    {
-        if( !addReceiver(*it, true) )
-        {
-            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << ": adding output port for local receiver '" << *it << "' failed";
-            return false;
-        }
-    }
+    // Create the output ports for known local receivers
+    // This will create the necessary set of output ports
+    //std::vector<std::string> localReceivers = _local_receivers.get();
+    //for(std::vector<std::string>::const_iterator it = localReceivers.begin(); it != localReceivers.end(); ++it)
+    //{
+    //    if( !addReceiver(*it, true) )
+    //    {
+    //        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << ": adding output port for local receiver '" << *it << "' failed";
+    //        return false;
+    //    }
+    //}
 
     return true;
 }
@@ -178,10 +125,11 @@ bool MessageTransportTask::startHook()
         registerService(*it);
     }
 
-    // And register other known addresses
-    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = otherServiceDirectoryEntries.begin(); it != otherServiceDirectoryEntries.end(); it++)
+    // And register other already known addresses (e.g. when they cannot be
+    // discovery using the distributed name service)
+    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = mExtraServiceDirectoryEntries.begin(); it != mExtraServiceDirectoryEntries.end(); it++)
     {
-        mDistributedServiceDirectory->registerService(*it);
+        mMessageTransport->getServiceDirectory()->registerService(*it);
     }
 
     return true;
@@ -191,33 +139,24 @@ void MessageTransportTask::updateHook()
 {
     using namespace fipa::acl;
 
+    // Handling the incoming letters from direct clients
     fipa::SerializedLetter serializedLetter;
     while( _letters.read(serializedLetter) == RTT::NewData)
     {
         RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : received new letter of size '" << serializedLetter.getVector().size() << "'" << RTT::endlog();
 
         fipa::acl::Letter letter = serializedLetter.deserialize();
+
+        // Debugging
         fipa::acl::ACLBaseEnvelope be = letter.flattened();
         RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : intended receivers: " << be.getIntendedReceivers() << ", content: " << letter.getACLMessage().getContent() << RTT::endlog();
+
+        // Handle letter
         mMessageTransport->handle(letter);
     }
 
-    // Only get new UDT letters, if UDT is activated
-    std::vector<std::string> protocols = _protocols.get();
-    if(std::find(protocols.begin(), protocols.end(), "udt") != protocols.end())
-    {
-        // Accept new connections
-        mUDTNode->accept();
-
-        // Handle MTS UDT data transfer
-        mUDTNode->update();
-        while(mUDTNode->hasLetter())
-        {
-            RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : node received letter " << RTT::endlog();
-            fipa::acl::Letter letter = mUDTNode->nextLetter();
-            mMessageTransport->handle(letter);
-        }
-    }
+    // trigger connection handling and message processing
+    mMessageTransport->trigger();
 }
 
 void MessageTransportTask::stopHook()
@@ -232,7 +171,7 @@ void MessageTransportTask::stopHook()
     }
 
     // And deregister other known addresses
-    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = otherServiceDirectoryEntries.begin(); it != otherServiceDirectoryEntries.end(); it++)
+    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = mExtraServiceDirectoryEntries.begin(); it != mExtraServiceDirectoryEntries.end(); it++)
     {
         deregisterService(it->getName());
     }
@@ -246,103 +185,39 @@ void MessageTransportTask::cleanupHook()
 {
     MessageTransportTaskBase::cleanupHook();
 
-    delete mUDTNode;
-    mUDTNode = NULL;
-
-    delete mDistributedServiceDirectory;
-    mDistributedServiceDirectory = NULL;
-
     delete mMessageTransport;
     mMessageTransport = NULL;
-
-    delete mSocketTransport;
-    mSocketTransport = NULL;
 }
 
-fipa::acl::AgentIDList MessageTransportTask::deliverLetterLocally(const fipa::acl::Letter& letter)
+bool MessageTransportTask::deliverLetterLocally(const std::string& receiverName, const fipa::acl::Letter& letter)
 {
-    using namespace fipa::acl;
+    // Local delivery
+    RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' delivery to local client" << RTT::endlog();
 
-    ACLBaseEnvelope envelope = letter.flattened();
-    AgentIDList receivers = envelope.getIntendedReceivers();
-    AgentIDList::const_iterator rit = receivers.begin();
-
-    // Maintain a list of remaining receivers
-    AgentIDList remainingReceivers = receivers;
-
-    // For each intended receiver, try to deliver.
-    for(; rit != receivers.end(); ++rit)
+    // Deliver the message to local clients, i.e. a corresponding receiver has a dedicated output port available on this MTS
+    ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
+    if(portsIt == mReceivers.end())
     {
-        // Handle delivery
-        // The name of the next destination, can be an intermediate receiver
-        std::string receiverName = rit->getName();
-        fipa::acl::Letter updatedLetter = letter.createDedicatedEnvelope( fipa::acl::AgentID(receiverName) );
-
-        // Check for local receivers
-        // XXX duplicate: done in each forwarding method
-        fipa::services::ServiceDirectoryList list = mDistributedServiceDirectory->search(receiverName, fipa::services::ServiceDirectoryEntry::NAME, false);
-        if(list.empty())
+        RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
+    } else {
+        RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(portsIt->second);
+        if(clientPort)
         {
-            RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' since it is globally and locally unknown" << RTT::endlog();
-            continue;
-        } else if(list.size() > 1) {
-            RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : receiver '" << receiverName << "' has multiple entries in the service directory -- cannot disambiguate'" << RTT::endlog();
+            fipa::SerializedLetter serializedLetter(letter, fipa::acl::representation::BITEFFICIENT);
+            if(!clientPort->connected())
+            {
+                RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
+            } else {
+                clientPort->write(serializedLetter);
+                return true;
+            }
         } else {
-            using namespace fipa::services;
-            // Extract the service location
-            ServiceDirectoryEntry serviceEntry = list.front();
-            ServiceLocator locator = serviceEntry.getLocator();
-            ServiceLocation location = locator.getFirstLocation();
-
-            // Check against the first service location (should be enough)
-            if(location == mDefaultTransport->getServiceLocations()[0])
-            {
-                // Local delivery
-                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' delivery to local client" << RTT::endlog();
-
-                // Deliver the message to local clients, i.e. a corresponding receiver has a dedicated output port available on this MTS
-                ReceiverPorts::iterator portsIt = mReceivers.find(receiverName);
-                if(portsIt == mReceivers.end())
-                {
-                    RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : could neither deliver nor forward message to receiver: '" << receiverName << "' due to an internal error. No port is available for this receiver." << RTT::endlog();
-                    continue;
-                } else {
-                    RTT::OutputPort<fipa::SerializedLetter>* clientPort = dynamic_cast< RTT::OutputPort<fipa::SerializedLetter>* >(portsIt->second);
-                    if(clientPort)
-                    {
-                        fipa::SerializedLetter serializedLetter(updatedLetter, fipa::acl::representation::BITEFFICIENT);
-                        if(!clientPort->connected())
-                        {
-                            RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
-                            continue;
-                        } else {
-                            clientPort->write(serializedLetter);
-                            // Remove the receiver from the delivery list
-                            fipa::acl::AgentIDList::iterator it = std::find(remainingReceivers.begin(), remainingReceivers.end(), *rit);
-                            if(it != remainingReceivers.end())
-                            {
-                                remainingReceivers.erase(it);
-                            }
-
-                            RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : delivery to '" << receiverName << "'" << RTT::endlog();
-                            continue;
-                        }
-                    } else {
-                        RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
-                        continue;
-                    }
-                }
-            }
-            else
-            {
-                RTT::log(RTT::Debug) << "MessageTransportTask: '" << getName() << "' : not handling '" << receiverName << "' as it's not a local agent." << RTT::endlog();
-            }
+            RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
         }
     }
 
-    return remainingReceivers;
+    return false;
 }
-
 
 ////////////////////////////////RPC-METHODS//////////////////////////
 std::vector<std::string> MessageTransportTask::getReceivers()
@@ -394,7 +269,7 @@ void MessageTransportTask::deregisterService(std::string receiver)
     try
     {
         RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : deregistering service '" << receiver << "'" << RTT::endlog();
-        mDistributedServiceDirectory->deregisterService(receiver, fipa::services::ServiceDirectoryEntry::NAME);
+        mMessageTransport->deregisterClient(receiver);
     }
     catch(const fipa::services::NotFound& e)
     {
@@ -405,17 +280,7 @@ void MessageTransportTask::deregisterService(std::string receiver)
 void MessageTransportTask::registerService(std::string receiver)
 {
     RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : registering service '" << receiver << "'" << RTT::endlog();
-    fipa::services::ServiceLocator locator;
-
-    std::vector<fipa::services::ServiceLocation> locations = mDefaultTransport->getServiceLocations();
-    for(std::vector<fipa::services::ServiceLocation>::const_iterator it = locations.begin();
-        it != locations.end(); it++)
-    {
-        locator.addLocation(*it);
-    }
-
-    fipa::services::ServiceDirectoryEntry client(receiver, "mts_client", locator, "Message client of " + getName());
-    mDistributedServiceDirectory->registerService(client);
+    mMessageTransport->registerClient(receiver, "Message client of " + getName());
 }
 
 
