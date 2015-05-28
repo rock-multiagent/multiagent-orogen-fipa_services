@@ -9,6 +9,7 @@
 #include <vector>
 #include <boost/thread.hpp>
 #include <service_discovery/ServiceDiscovery.hpp>
+#include <fipa_services/ServiceDirectoryEntry.hpp>
 
 namespace fipa {
 namespace services {
