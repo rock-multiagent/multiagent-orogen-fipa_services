@@ -106,15 +106,15 @@ bool MessageTransportTask::configureHook()
 
     // Create the output ports for known local receivers
     // This will create the necessary set of output ports
-    //std::vector<std::string> localReceivers = _local_receivers.get();
-    //for(std::vector<std::string>::const_iterator it = localReceivers.begin(); it != localReceivers.end(); ++it)
-    //{
-    //    if( !addReceiver(*it, true) )
-    //    {
-    //        RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << ": adding output port for local receiver '" << *it << "' failed";
-    //        return false;
-    //    }
-    //}
+    std::vector<std::string> localReceivers = _local_receivers.get();
+    for(std::vector<std::string>::const_iterator it = localReceivers.begin(); it != localReceivers.end(); ++it)
+    {
+        if( !addReceiver(*it, true) )
+        {
+            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << ": adding output port for local receiver '" << *it << "' failed";
+            return false;
+        }
+    }
 
     return true;
 }
