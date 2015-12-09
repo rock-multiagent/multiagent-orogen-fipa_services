@@ -87,22 +87,22 @@ bool MessageTransportTask::configureHook()
     mMessageTransport->registerMessageTransport("local-delivery",
                                          boost::bind(&fipa_services::MessageTransportTask::deliverLetterLocally, this,_1,_2));
 
-    // // Fill the list of other service locations from the configuration property.
-    // std::vector<std::string> addresses = _known_addresses.get();
-    // for(std::vector<std::string>::const_iterator it = addresses.begin(); it != addresses.end(); ++it)
-    // {
-    //     // Split by the '='
-    //     std::vector<std::string> tokens;
-    //     boost::split(tokens, *it, boost::is_any_of("="));
+    // Fill the list of other service locations from the configuration property.
+    std::vector<std::string> addresses = _known_addresses.get();
+    for(std::vector<std::string>::const_iterator it = addresses.begin(); it != addresses.end(); ++it)
+    {
+        // Split by the '='
+        std::vector<std::string> tokens;
+        boost::split(tokens, *it, boost::is_any_of("="));
 
-    //     fipa::services::ServiceLocator locator;
-    //     fipa::services::ServiceLocation location = fipa::services::ServiceLocation(tokens[1], "fipa::services::udt::UDTTransport");
-    //     locator.addLocation(location);
+        fipa::services::ServiceLocator locator;
+        fipa::services::ServiceLocation location = fipa::services::ServiceLocation(tokens[1], "fipa::services::transports::MessageTransport");
+        locator.addLocation(location);
 
-    //     fipa::services::ServiceDirectoryEntry entry (tokens[0], mClientServiceType, locator, "Message client");
-    //     //mDistributedServiceDirectory->registerService(entry);
-    //     otherServiceDirectoryEntries.push_back(entry);
-    // }
+        fipa::services::ServiceDirectoryEntry entry (tokens[0], mClientServiceType, locator, "Message client");
+        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << ": adding extra directory entry: " << entry.toString();
+        mExtraServiceDirectoryEntries.push_back(entry);
+    }
 
     // Create the output ports for known local receivers
     // This will create the necessary set of output ports
