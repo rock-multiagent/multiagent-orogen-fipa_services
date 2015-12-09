@@ -1,0 +1,8 @@
+--- name:default
+transports: [UDT]
+known_addresses: ["coyote3=udt://10.250.10.41:14002"]
+transport_configurations:
+- transport_type: UDT
+  listening_port: 14001
+  maximum_clients: 50
+ 

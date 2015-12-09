@@ -1,0 +1,9 @@
+--- name:default
+#transports: [UDT, TCP]
+transports: [UDT]
+#known_addresses: ["cave=udt://192.168.151.171:14001","coyote3=udt://10.250.10.41:14002"]
+transport_configurations:
+- transport_type: UDT
+  listening_port: 14001
+  maximum_clients: 50
+ 
