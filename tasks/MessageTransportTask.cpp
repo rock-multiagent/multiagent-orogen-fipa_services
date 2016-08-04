@@ -130,13 +130,6 @@ bool MessageTransportTask::startHook()
     if(!MessageTransportTaskBase::startHook())
         return false;
 
-    // Also explicitly register all services, if we already have receivers
-    std::vector<std::string> recvs = getReceivers();
-    for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
-    {
-        registerService(*it);
-    }
-
     // And register other already known addresses (e.g. when they cannot be
     // discovery using the distributed name service)
     for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = mExtraServiceDirectoryEntries.begin(); it != mExtraServiceDirectoryEntries.end(); it++)
@@ -174,19 +167,6 @@ void MessageTransportTask::updateHook()
 void MessageTransportTask::stopHook()
 {
     MessageTransportTaskBase::stopHook();
-
-    // Explicitly deregister all services
-    std::vector<std::string> recvs = getReceivers();
-    for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
-    {
-        deregisterService(*it);
-    }
-
-    // And deregister other known addresses
-    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = mExtraServiceDirectoryEntries.begin(); it != mExtraServiceDirectoryEntries.end(); it++)
-    {
-        deregisterService(it->getName());
-    }
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -196,6 +176,20 @@ void MessageTransportTask::stopHook()
 void MessageTransportTask::cleanupHook()
 {
     MessageTransportTaskBase::cleanupHook();
+
+    // Explicitly deregister all services
+    std::vector<std::string> recvs = getReceivers();
+    for(std::vector<std::string>::const_iterator it = recvs.begin(); it != recvs.end(); it++)
+    {
+        removeReceiverPort(*it);
+        deregisterService(*it);
+    }
+
+    // And deregister other known addresses
+    for(std::vector<fipa::services::ServiceDirectoryEntry>::const_iterator it = mExtraServiceDirectoryEntries.begin(); it != mExtraServiceDirectoryEntries.end(); it++)
+    {
+        deregisterService(it->getName());
+    }
 
     delete mMessageTransport;
     mMessageTransport = NULL;
@@ -251,10 +245,9 @@ bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_l
     RTT::base::PortInterface *pi = ports()->getPort(receiver);
     if(pi) // we are already having a connection of the given name
     {
-        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : connection " << receiver << " is already registered" << RTT::endlog();
-        // Since the connection already exists, everything is good?!
-        // so could be true here as well
-        return false;
+        RTT::log(RTT::Warning) << "MessageTransportTask '" << getName() << "' : receiver port '" << receiver << "' already exists. Will reuse the port" << RTT::endlog();
+        // Since the receiver port already exists, we assume everything is good
+        return true;
     }
 
     RTT::base::PortInterface* port = _letters.antiClone();
@@ -268,6 +261,7 @@ bool MessageTransportTask::addReceiver(::std::string const & receiver, bool is_l
     }
 
     bool success = addReceiverPort(out_port, receiver);
+
     if(success && is_local)
     {
         registerService(receiver);
