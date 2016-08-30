@@ -81,6 +81,7 @@ bool MessageTransportTask::configureHook()
     {
         transports.push_back("UDT");
     }
+    RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : activating transports" << RTT::endlog();
     mMessageTransport->activateTransports(transports);
 
     // Register local message transport
@@ -100,7 +101,7 @@ bool MessageTransportTask::configureHook()
         locator.addLocation(location);
 
         fipa::services::ServiceDirectoryEntry entry (tokens[0], mClientServiceType, locator, "Message client");
-        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "'" << ": adding extra directory entry: " << entry.toString();
+        RTT::log(RTT::Info) << "MessageTransportTask '" << getName() << "' : adding extra directory entry: " << entry.toString() << RTT::endlog();
         mExtraServiceDirectoryEntries.push_back(entry);
     }
 
@@ -111,7 +112,7 @@ bool MessageTransportTask::configureHook()
     {
         if( !addReceiver(*it, true) )
         {
-            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << ": adding output port for local receiver '" << *it << "' failed";
+            RTT::log(RTT::Error) << "MessageTransportTask '" << getName() << "'" << ": adding output port for local receiver '" << *it << "' failed" << RTT::endlog();
             return false;
         }
     }
