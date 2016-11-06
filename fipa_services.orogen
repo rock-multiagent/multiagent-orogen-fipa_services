@@ -79,3 +79,18 @@ task_context "MessageTransportTask" do
     # For now the component needs to be periodic to handle the internal udt based communication
     periodic(0.01)
 end
+
+task_context "EchoTask" do
+    needs_configuration
+
+    property("agent_name","/std/string").
+        doc("Agent name for the echo task")
+
+    input_port("letters","/fipa/SerializedLetter").
+        doc("Input port for serialized letters")
+
+    output_port("handled_letters","/fipa/SerializedLetter").
+        doc("All handled letters with timestamp of handling")
+
+    port_driven
+end
