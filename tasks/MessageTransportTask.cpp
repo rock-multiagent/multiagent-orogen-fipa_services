@@ -213,11 +213,10 @@ bool MessageTransportTask::deliverLetterLocally(const std::string& receiverName,
             fipa::SerializedLetter serializedLetter(letter, fipa::acl::representation::BITEFFICIENT);
             if(!clientPort->connected())
             {
-                RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected" << RTT::endlog();
-            } else {
-                clientPort->write(serializedLetter);
-                return true;
+                RTT::log(RTT::Warning) << "MessageTransportTask: '" << getName() << "' : client port to '" << receiverName << "' exists, but is not connected -- message not be processed by receiver" << RTT::endlog();
             }
+            clientPort->write(serializedLetter);
+            return true;
         } else {
             RTT::log(RTT::Error) << "MessageTransportTask: '" << getName() << "' : internal error since client port could not be casted to expected type" << RTT::endlog();
         }
