@@ -80,6 +80,11 @@ task_context "MessageTransportTask" do
     periodic(0.01)
 end
 
+# Task that echos all incoming letters where
+# protocol set to ECHO and performative to :REQUEST
+# An echo is send back to the request originator and reply
+# is performed with performative :INFORM message containing the incoming
+# message using the same representation
 task_context "EchoTask" do
     needs_configuration
 
