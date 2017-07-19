@@ -56,8 +56,10 @@ module FIPA
             wait_for_appearance(timeout_in_s)
         end
 
+        # Wait for the appearance of all known agents (which do not start with
+        # the reserved prefix: 'mts'
         def wait_for_appearance(timeout_in_s)
-            puts "Start waiting for wait_for_appearance of agents with timeout: #{timeout_in_s}"
+            puts "Start waiting for wait_for_appearance of agents for #{timeout_in_s} seconds"
             start = Time.now
             stop = false
             while !stop
@@ -79,7 +81,7 @@ module FIPA
         end
 
         def wait_for_all_agents(timeout_in_s = 60)
-            puts "Start waiting for all agents with timeout: #{timeout_in_s}"
+            puts "Start waiting for all known agents: #{known_agents} for #{timeout_in_s} seconds"
             start = Time.now
             stop = false
             wait_list = known_agents.keys
@@ -95,6 +97,7 @@ module FIPA
                     identified_agent = letter.getFrom.getName
                     puts "#{from}: received letter from: #{identified_agent}"
                     wait_list.delete identified_agent
+                    puts "Remaining agents: #{wait_list}"
                     if wait_list.empty?
                         stop = true
                     end
