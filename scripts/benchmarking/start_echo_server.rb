@@ -12,6 +12,9 @@ o_ntp_sync = false
 o_this_agent = "echo-#{uuid}"
 o_other_agents = nil
 
+allowed_transports = [ "UDT", "TCP"]
+o_transport = "UDT"
+
 options = OptionParser.new do |opts|
     opts.banner = "usage: #{$0}"
     opts.on("-o","--agent NAME", "Name of this (echoing) agent") do |name|
@@ -21,6 +24,16 @@ options = OptionParser.new do |opts|
     opts.on("-s","--ntp-sync","Activate if ntp shall be synced at startup") do
         o_ntp_sync = true
     end
+
+    opts.on("-t","--transport TYPE", "Select transport type: either TCP or UDT") do |transport|
+        if allowed_transports.include?(transport)
+            o_transport = transport
+        else
+            puts "Transport '#{transport}' is unknown -- select one of #{allowed_transports.join(',')}"
+            exit 1
+        end
+    end
+
     opts.on("-h","--help") do
         puts opts
         exit 0
@@ -46,6 +59,7 @@ Orocos.run "fipa_services::MessageTransportTask" => "mts_echo",
         raise
     end
 
+    mts_module.transports = [ o_transport ]
     mts_module.configure
     mts_module.start
     mts_module.addReceiver(o_this_agent, true)
