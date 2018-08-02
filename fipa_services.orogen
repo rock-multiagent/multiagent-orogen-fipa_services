@@ -56,6 +56,9 @@ task_context "MessageTransportTask" do
         doc("Input port for FIPA letters, that will be routed according to the set receiver field").
         needs_reliable_connection
 
+    output_port("letters_debug", "/fipa/SerializedLetter").
+        doc("Output port for monitoring and recording data on the corresponding input port letters")
+
     dynamic_output_port(/.*/,"/fipa/SerializedLetter").
         doc("Output ports will be of the receivers name")
 

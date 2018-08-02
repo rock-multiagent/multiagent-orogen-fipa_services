@@ -149,6 +149,8 @@ void MessageTransportTask::updateHook()
     fipa::SerializedLetter serializedLetter;
     while( _letters.read(serializedLetter) == RTT::NewData)
     {
+        _letters_debug.write(serializedLetter);
+
         RTT::log(RTT::Debug) << "MessageTransportTask '" << getName() << "' : received new letter of size '" << serializedLetter.getVector().size() << "'" << RTT::endlog();
 
         fipa::acl::Letter letter = serializedLetter.deserialize();
