@@ -5,7 +5,7 @@
   <author>Stefan Haase/stefan.haase@dfki.de</author>
   <license>LGPL v3 or higher</license>
   <url>https://gitorious.org/rock-multiagent</url>
-  <depend package="base/types" />
+  <depend package="base/orogen/types" />
   <depend package="multiagent/fipa_services" />
   <depend package="uuid" />
   <versioncontrol type="git" url="" />

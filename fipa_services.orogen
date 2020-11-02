@@ -17,6 +17,7 @@ using_library "fipa_acl"
 using_library "fipa_services"
 using_library "service_discovery"
 
+import_types_from 'base'
 import_types_from "fipa_acl/message_generator/serialized_letter.h"
 import_types_from "fipa_services/ServiceDirectoryEntry.hpp"
 import_types_from "fipa_services/transports/Configuration.hpp"
