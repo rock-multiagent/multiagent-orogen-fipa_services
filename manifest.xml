@@ -1,10 +1,15 @@
 <package>
+  <name>orogen-fipa_services</name>
   <description brief="oroGen module for FIPA services">
+     oroGen component for FIPA services: allows to create distributed names
+     service and distributed communication via a FIPA (Foundation for
+     Intelligent Physical Agents) based infrastructure.
   </description>
   <author>Thomas Roehr/thomas.roehr@dfki.de</author>
   <author>Stefan Haase/stefan.haase@dfki.de</author>
+  <maintainer>Thomas Roehr/thomas.roehr@dfki.de</maintainer>
   <license>LGPL v3 or higher</license>
-  <url>https://gitorious.org/rock-multiagent</url>
+  <url>https://github.com/rock-multiagent/multiagent-orogen-fipa_services</url>
   <depend package="base/orogen/types" />
   <depend package="multiagent/fipa_services" />
   <depend package="uuid" />
@@ -12,4 +17,8 @@
   <export>
     <cpp cflags="" lflags="" />
   </export>
+  <keywords>
+      <keyword>communication</keyword>
+      <keyword>multiagent</keyword>
+  </keywords>
 </package>
